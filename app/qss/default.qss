@@ -1,0 +1,76 @@
+/* GenericScope Default Style */
+
+QMainWindow {
+    background-color: #f0f0f0;
+}
+
+QPushButton {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+QPushButton:hover {
+    background-color: #45a049;
+}
+
+QPushButton:pressed {
+    background-color: #3d8b40;
+}
+
+QPushButton:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}
+
+QLineEdit, QTextEdit, QComboBox {
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: white;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+    border: 1px solid #4CAF50;
+}
+
+QGroupBox {
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+}
+
+QStatusBar {
+    background-color: #e0e0e0;
+    border-top: 1px solid #cccccc;
+}
+
+QMenuBar {
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #cccccc;
+}
+
+QMenuBar::item:selected {
+    background-color: #4CAF50;
+    color: white;
+}
+
+QMenu {
+    background-color: white;
+    border: 1px solid #cccccc;
+}
+
+QMenu::item:selected {
+    background-color: #4CAF50;
+    color: white;
+}
