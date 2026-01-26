@@ -1,0 +1,12 @@
+[2026-01-26 10:33:23.461] [INFO] Log system initialized
+[2026-01-26 10:33:24.979] [INFO] Loaded 0 plugins
+[2026-01-26 10:33:25.305] [INFO] GenericScope started
+[2026-01-26 10:33:33.938] [INFO] Dark mode: ON
+[2026-01-26 10:33:36.160] [INFO] Dark mode: OFF
+[2026-01-26 10:33:36.554] [INFO] Dark mode: ON
+[2026-01-26 10:33:42.452] [INFO] Dark mode: OFF
+[2026-01-26 10:33:42.848] [INFO] Dark mode: ON
+[2026-01-26 10:33:43.140] [INFO] Dark mode: OFF
+[2026-01-26 10:34:09.146] [INFO] Recording started: D:/app/App_GeneriScope/GenericScope/Bin/x64/Release/data/imu_data_20260126_103409.csv
+[2026-01-26 10:34:09.868] [INFO] Recording stopped. Total records: 0
+[2026-01-26 10:34:32.601] [INFO] GenericScope stopped

@@ -9,12 +9,14 @@ LIBS += -lalgorithm -lutil -ltransfer -lplot -llog -lrecord -lcore_plugins_manag
 
 HEADERS += \
     ui/mainwindow.h \
+    ui/commandsettingsdialog.h \
     config/config.h \
     device/devicemanager.h
 
 SOURCES += \
     main.cpp \
     ui/mainwindow.cpp \
+    ui/commandsettingsdialog.cpp \
     config/config.cpp \
     device/devicemanager.cpp
 
