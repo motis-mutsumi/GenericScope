@@ -10,8 +10,6 @@ trigger: /qt-review
 
 ## 审查流程
 
-当用户提供代码或生成新函数后，按以下步骤进行审查：
-
 1. **API兼容性检查** - 确认所有API在Qt 5.14中可用
 2. **代码规范检查** - 检查命名、格式、注释等
 3. **性能和安全检查** - 识别潜在问题
@@ -21,7 +19,7 @@ trigger: /qt-review
 ## Qt 5.14 关键API限制
 
 ### QVector API限制
-**问题：** Qt 5.14的`QVector::resize()`只支持单参数版本
+**问题**: Qt 5.14的`QVector::resize()`只支持单参数版本
 
 ```cpp
 // ❌ 错误 - Qt 5.14不支持
@@ -38,31 +36,10 @@ QVector<int> vec(100, 0);
 ```
 
 ### QString API
-**问题：** 某些Qt 6的QString方法在Qt 5.14中不可用
-
+避免使用Qt 6新增的API，使用Qt 5.14支持的方法：
 ```cpp
-// ❌ 避免使用Qt 6新增的API
-QString str;
-// str.sliced()  // Qt 6才有
-
 // ✅ 使用Qt 5.14支持的API
-QString str;
-str.mid(pos, len);  // Qt 5.14支持
-```
-
-### 容器初始化
-```cpp
-// ✅ 推荐：使用构造函数初始化
-QVector<double> data(size, 0.0);
-QList<QString> list(count, "default");
-
-// ✅ 可用：先resize再fill
-QVector<int> vec;
-vec.resize(size);
-vec.fill(defaultValue);
-
-// ❌ 避免：Qt 5.14不支持的双参数resize
-vec.resize(size, defaultValue);  // 编译错误
+str.mid(pos, len);  // 而非Qt 6的sliced()
 ```
 
 ## 代码规范检查清单
@@ -72,49 +49,32 @@ vec.resize(size, defaultValue);  // 编译错误
 // ✅ 类名：大驼峰
 class MyWidget : public QWidget {};
 
-// ✅ 成员变量：m_前缀 + 小驼峰
+// ✅ 成员变量：m_前缀
 private:
     int m_count;
     QString m_name;
-    QTimer *m_timer;
 
 // ✅ 函数名：小驼峰
 void updateData();
-void processImage();
 
 // ✅ 常量：k前缀或全大写
 const int kMaxSize = 100;
-const QString DEFAULT_NAME = "Untitled";
 
 // ✅ 信号：无前缀，描述性名称
 signals:
     void dataChanged();
-    void errorOccurred(const QString &error);
-
-// ✅ 槽函数：on前缀（可选）
-private slots:
-    void onButtonClicked();
-    void handleTimeout();
 ```
 
 ### 2. 内存管理
 ```cpp
 // ✅ 使用父对象管理内存
-QWidget *widget = new QWidget(this);  // this是父对象
-QTimer *timer = new QTimer(this);
+QWidget *widget = new QWidget(this);
 
 // ✅ 使用智能指针（无父对象时）
 QScopedPointer<QFile> file(new QFile("data.txt"));
-QSharedPointer<Data> data = QSharedPointer<Data>::create();
 
 // ❌ 避免裸指针无父对象
 QWidget *widget = new QWidget();  // 可能泄漏！
-
-// ✅ 在析构函数中清理
-~MyClass() {
-    delete m_data;
-    m_data = nullptr;
-}
 ```
 
 ### 3. 信号槽连接
@@ -128,7 +88,7 @@ connect(timer, &QTimer::timeout, this, [this]() {
     updateDisplay();
 });
 
-// ❌ 避免旧式SIGNAL/SLOT宏（无类型检查）
+// ❌ 避免旧式SIGNAL/SLOT宏
 connect(button, SIGNAL(clicked()), this, SLOT(onButtonClicked()));
 
 // ✅ 检查连接是否成功
@@ -152,7 +112,6 @@ QAtomicInt m_counter;
 m_counter.fetchAndAddRelaxed(1);
 
 // ❌ 避免跨线程直接访问UI
-// 在工作线程中：
 ui->label->setText("Error");  // 危险！
 ```
 
@@ -165,10 +124,6 @@ ui->label->setText("Error");  // 危险！
         // 使用文件
     }  // 自动关闭
 }
-
-// ✅ 使用QScopedPointer
-QScopedPointer<QFile> file(new QFile("data.txt"));
-file->open(QIODevice::ReadOnly);
 
 // ✅ 检查资源打开状态
 if (!file.open(QIODevice::WriteOnly)) {
@@ -184,11 +139,6 @@ bool success = device->open();
 if (!success) {
     qWarning() << "Device open failed:" << device->errorString();
     return false;
-}
-
-// ✅ 使用qWarning/qDebug记录错误
-if (data.isEmpty()) {
-    qWarning() << "Empty data received";
 }
 
 // ✅ 使用Q_ASSERT检查前置条件
@@ -208,20 +158,16 @@ QString msg = QString("Error at line %1: %2").arg(line).arg(error);
 const QString name = QStringLiteral("MyApp");
 
 // ✅ 检查空字符串
-if (str.isEmpty()) {  // 推荐
+if (str.isEmpty()) {
     // 处理空字符串
 }
-
-// ❌ 避免不必要的转换
-QString str = QString("text");  // 多余
-QString str = "text";  // 更好
 ```
 
 ### 8. 容器使用
 ```cpp
 // ✅ 预分配容量
 QVector<int> vec;
-vec.reserve(1000);  // 避免多次重新分配
+vec.reserve(1000);
 
 // ✅ 使用const引用遍历
 for (const auto &item : list) {
@@ -232,10 +178,6 @@ for (const auto &item : list) {
 QVector<int> vec;      // 连续内存，随机访问
 QList<QString> list;   // 灵活，插入删除快
 QMap<QString, int> map; // 键值对，有序
-
-// ❌ 避免不必要的拷贝
-QVector<Data> vec = getData();  // 可能拷贝
-const QVector<Data> &vec = getData();  // 引用，无拷贝
 ```
 
 ## 常见问题检查
@@ -248,17 +190,13 @@ data.resize(100, 0.0);  // Qt 5.14编译错误
 
 // ✅ 修复方案
 QVector<double> data(100, 0.0);  // 使用构造函数
-// 或
-QVector<double> data;
-data.resize(100);
-data.fill(0.0);
 ```
 
 ### 问题2：内存泄漏
 ```cpp
 // ❌ 错误代码
 void MyClass::createWidget() {
-    QWidget *widget = new QWidget();  // 无父对象，可能泄漏
+    QWidget *widget = new QWidget();  // 无父对象
     widget->show();
 }
 
@@ -273,34 +211,18 @@ void MyClass::createWidget() {
 ```cpp
 // ❌ 错误代码
 void WorkerThread::run() {
-    // 处理数据
-    ui->label->setText("Done");  // 危险！跨线程访问UI
+    ui->label->setText("Done");  // 危险！
 }
 
 // ✅ 修复方案
 void WorkerThread::run() {
-    // 处理数据
     QMetaObject::invokeMethod(mainWindow, [this]() {
         ui->label->setText("Done");
     }, Qt::QueuedConnection);
 }
 ```
 
-### 问题4：信号槽连接失败
-```cpp
-// ❌ 错误代码
-connect(button, &QPushButton::clicked,
-        this, &MyClass::onButtonClick);  // 函数名拼写错误
-
-// ✅ 修复方案
-bool ok = connect(button, &QPushButton::clicked,
-                  this, &MyClass::onButtonClicked);
-if (!ok) {
-    qWarning() << "Failed to connect signal";
-}
-```
-
-### 问题5：未检查空指针
+### 问题4：未检查空指针
 ```cpp
 // ❌ 错误代码
 void processData(Data *data) {
@@ -321,43 +243,18 @@ void processData(Data *data) {
 
 ### 1. 避免不必要的拷贝
 ```cpp
-// ❌ 低效
-QVector<Data> getData() {
-    QVector<Data> result;
-    // 填充数据
-    return result;  // 可能拷贝
-}
-
-// ✅ 高效（Qt 5.14支持隐式共享）
-QVector<Data> getData() {
-    QVector<Data> result;
-    // 填充数据
-    return result;  // 隐式共享，无拷贝
-}
-
 // ✅ 使用const引用传递
-void processData(const QVector<Data> &data) {
-    // 处理数据
-}
-```
+void processData(const QVector<Data> &data);
 
-### 2. 预分配容器容量
-```cpp
-// ❌ 低效
+// ✅ 预分配容器容量
 QVector<int> vec;
-for (int i = 0; i < 10000; ++i) {
-    vec.append(i);  // 多次重新分配
-}
-
-// ✅ 高效
-QVector<int> vec;
-vec.reserve(10000);  // 预分配
+vec.reserve(10000);
 for (int i = 0; i < 10000; ++i) {
     vec.append(i);
 }
 ```
 
-### 3. 使用合适的循环
+### 2. 使用合适的循环
 ```cpp
 // ✅ 只读遍历
 for (const auto &item : list) {
@@ -377,8 +274,6 @@ for (int i = 0; i < list.size(); ++i) {
 
 ## 审查报告格式
 
-审查完成后，按以下格式提供报告：
-
 ```
 ## Qt 5.14代码审查报告
 
@@ -393,20 +288,16 @@ for (int i = 0; i < list.size(); ++i) {
 
 ### 📝 修改建议
 [提供具体的修改代码示例]
-
-### 📚 参考资料
-- Qt 5.14官方文档链接
-- 相关最佳实践说明
 ```
 
 ## 审查重点
 
-1. **API兼容性**：确保所有API在Qt 5.14中可用
-2. **内存安全**：检查内存泄漏和野指针
-3. **线程安全**：验证跨线程操作的正确性
-4. **性能**：识别性能瓶颈和优化机会
-5. **可维护性**：评估代码的可读性和可维护性
-6. **错误处理**：确保适当的错误检查和处理
+1. **API兼容性** - 确保所有API在Qt 5.14中可用
+2. **内存安全** - 检查内存泄漏和野指针
+3. **线程安全** - 验证跨线程操作的正确性
+4. **性能** - 识别性能瓶颈和优化机会
+5. **可维护性** - 评估代码的可读性和可维护性
+6. **错误处理** - 确保适当的错误检查和处理
 
 ## 快速检查命令
 

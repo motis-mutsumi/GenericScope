@@ -5,11 +5,13 @@ include(../global.pri)
 
 # 链接库
 LIBS += -L$$PWD/../Bin/$$ARCH/$$BUILD_MODE
-LIBS += -lalgorithm -lutil -ltransfer -lplot -llog -lrecord -lcore_plugins_manager
+LIBS += -lalgorithm -lutil -lprotocol -ltransfer -lplot -llog -lrecord -lcore_plugins_manager
 
 HEADERS += \
     ui/mainwindow.h \
     ui/commandsettingsdialog.h \
+    ui/protocoltypeconverter.h \
+    ui/protocoltestdialog.h \
     config/config.h \
     device/devicemanager.h
 
@@ -17,6 +19,8 @@ SOURCES += \
     main.cpp \
     ui/mainwindow.cpp \
     ui/commandsettingsdialog.cpp \
+    ui/protocoltypeconverter.cpp \
+    ui/protocoltestdialog.cpp \
     config/config.cpp \
     device/devicemanager.cpp
 
@@ -30,6 +34,7 @@ RESOURCES += \
 INCLUDEPATH += \
     $$PWD/../algorithm \
     $$PWD/../util \
+    $$PWD/../protocol \
     $$PWD/../transfer \
     $$PWD/../common_component/plot \
     $$PWD/../common_component/log \

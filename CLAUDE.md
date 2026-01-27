@@ -52,22 +52,29 @@ jom.exe -f Makefile.Release
    - 时间辅助工具
    - 通用工具函数
 
-3. **transfer** - 硬件通信抽象层（`libtransfer`）
+3. **protocol** - 协议配置与解析库（`libprotocol`）
+   - 协议配置管理（ProtocolConfig）
+   - 动态协议解析（ProtocolParser）
+   - 校验码计算（ChecksumCalculator）
+   - 数据类型转换（DataTypeConverter）
+   - 协议管理器（ProtocolManager单例）
+
+4. **transfer** - 硬件通信抽象层（`libtransfer`）
    - 统一的传输接口
    - 多种通信协议支持
    - 工厂模式创建传输对象
 
-4. **common_component** - 共享 UI 组件库（`libcommon_component`）
+5. **common_component** - 共享 UI 组件库（`libcommon_component`）
    - Graphics - 图形显示组件
    - Plot - 绘图组件
    - Log - 日志管理
    - Record - 数据录制
 
-5. **core_plugin** - 插件系统
+6. **core_plugin** - 插件系统
    - core_plugins_manager - 插件管理器（`libcore_plugins_manager`）
    - core_plugins - 具体插件实现（动态库）
 
-6. **app** - 主应用程序可执行文件（`GenericScope.exe`）
+7. **app** - 主应用程序可执行文件（`GenericScope.exe`）
    - UI 界面（基于 DS_RVision 设计）
    - 设备管理
    - 配置管理
@@ -173,6 +180,161 @@ acq->setImageCallback([](const QImage &image) {
 });
 acq->startAcquisition();
 ```
+
+### 协议配置与解析系统
+
+**位置：** `protocol/` 模块
+
+`protocol` 模块提供完整的协议配置和动态解析功能，支持多种数据类型和校验方式。
+
+**核心组件：**
+
+1. **ProtocolConfig**（`protocol/protocolconfig.h/cpp`）
+   - 协议配置数据结构
+   - JSON序列化/反序列化
+   - 文件加载/保存
+   - 配置验证
+
+2. **ProtocolParser**（`protocol/protocolparser.h/cpp`）
+   - 动态协议解析引擎
+   - 帧头/帧尾识别
+   - 校验码验证
+   - 字段数据提取
+
+3. **ChecksumCalculator**（`protocol/checksumcalculator.h/cpp`）
+   - Sum（累加和）
+   - XOR（异或）
+   - CRC8
+   - CRC16（MODBUS标准）
+   - CRC32（IEEE 802.3标准）
+
+4. **DataTypeConverter**（`protocol/datatypeconverter.h/cpp`）
+   - 支持10种数据类型：int8/uint8/int16/uint16/int32/uint32/float/double/mbyte/string
+   - 大小端转换
+   - 缩放因子和偏移量支持
+   - 多字节整数（mbyte_t）特殊处理
+
+5. **ProtocolManager**（`protocol/protocolmanager.h/cpp`）
+   - 单例模式
+   - 协议CRUD操作
+   - 解析器工厂
+   - 线程安全（QMutex）
+
+**协议配置结构：**
+
+```cpp
+struct ProtocolConfig {
+    // 基本信息
+    QString name;            // 协议名称
+    QString version;         // 协议版本
+    QString description;     // 协议描述
+
+    // 帧格式配置
+    QString frameHeader;     // 帧头（16进制字符串）
+    QString frameFooter;     // 帧尾（16进制字符串）
+    int lengthPosition;      // 长度字段位置
+    ChecksumType checksumType;  // 校验方式
+    int checksumStart;       // 校验起始位置
+    int checksumLength;      // 校验字节数
+    int checksumPosition;    // 校验码位置
+    ByteOrder byteOrder;     // 字节序
+    int frequency;           // 数据频率（Hz）
+    QString separator;       // 分隔符（文本协议）
+
+    // 数据字段配置
+    QVector<FieldConfig> fields;
+};
+
+struct FieldConfig {
+    int index;               // 字段索引
+    int elementHead;         // 起始位置（字节偏移）
+    QString name;            // 字段名称
+    DataType type;           // 数据类型
+    int byteLength;          // 字节长度
+    double scale;            // 缩放因子
+    double offset;           // 偏移量
+    QString unit;            // 单位
+    double maximum;          // 最大值
+    double minimum;          // 最小值
+    QString description;     // 描述
+    QString tip;             // 提示信息
+};
+```
+
+**使用示例：**
+
+```cpp
+// 1. 创建协议配置
+ProtocolConfig config;
+config.name = "IMU_Protocol_V1";
+config.version = "1.0.0";
+config.frameHeader = "FF AA";
+config.frameFooter = "0D 0A";
+config.checksumType = ChecksumType::CRC16;
+config.byteOrder = ByteOrder::LittleEndian;
+
+// 添加字段
+FieldConfig field;
+field.name = "Roll";
+field.type = DataType::Float;
+field.elementHead = 0;
+field.byteLength = 4;
+field.scale = 1.0;
+field.unit = "°";
+config.fields.append(field);
+
+// 2. 保存到ProtocolManager
+ProtocolManager *manager = ProtocolManager::instance();
+manager->addProtocol(config);
+
+// 3. 创建解析器
+QSharedPointer<ProtocolParser> parser = manager->createParser("IMU_Protocol_V1");
+
+// 4. 解析数据
+QByteArray rawData = receiveFromDevice();
+ParseResult result = parser->parse(rawData);
+
+if (result.success) {
+    // 访问解析结果
+    double roll = result.fieldValues["Roll"].toDouble();
+    qDebug() << "Roll:" << roll;
+}
+```
+
+**与CommandSettingsDialog集成：**
+
+CommandSettingsDialog提供UI界面配置协议，通过ProtocolTypeConverter与ProtocolManager同步：
+
+```cpp
+// UI层配置协议后同步到ProtocolManager
+void CommandSettingsDialog::syncToProtocolManager() {
+    ProtocolManager *manager = ProtocolManager::instance();
+    for (auto it = m_protocols.begin(); it != m_protocols.end(); ++it) {
+        ::ProtocolConfig protocolConfig =
+            ProtocolTypeConverter::uiToProtocolConfig(it.value());
+        manager->addProtocol(it.key(), protocolConfig);
+    }
+}
+```
+
+**与ScopeUart集成：**
+
+ScopeUart可以使用ProtocolParser动态解析接收到的数据：
+
+```cpp
+// 设置协议
+uart->setProtocol("IMU_Protocol_V1");
+
+// 设置解析结果回调
+uart->setParseResultCallback([](const ParseResult &result) {
+    // 处理解析结果
+    for (auto it = result.fieldValues.begin(); it != result.fieldValues.end(); ++it) {
+        qDebug() << it.key() << ":" << it.value();
+    }
+});
+```
+
+详细集成指南参见：[docs/scopeuart-integration-guide.md](docs/scopeuart-integration-guide.md)
 
 ### 异步处理
 
@@ -440,6 +602,153 @@ ROLL,PITCH,YAW,AX,AY,AZ,GX,GY,GZ,MX,MY,MZ,TEMP
 - 16进制格式验证
 - 指令模板管理
 
+### 协议配置对话框
+
+**位置：** `app/ui/commandsettingsdialog.h/cpp`
+
+协议配置对话框（原指令设置对话框）已升级为完整的协议配置系统，支持多协议管理和动态解析配置。
+
+**界面布局：**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ 协议配置                                                    [_][□][×]│
+├──────────────────────────────────────────────────────────────────────┤
+│ [协议1] [协议2] [协议3] [+新建] [-删除]                             │
+├────────────────────────┬─────────────────────────────────────────────┤
+│ ┌─帧格式配置──────────┐│ ┌─字段配置────────────────────────────────┐│
+│ │ 协议信息             ││ │ [添加] [删除] [↑] [↓] [导入]           ││
+│ │ 名称: [________]     ││ │ ┌────────────────────────────────────┐ ││
+│ │ 版本: [________]     ││ │ │序号│起始│名称│类型│长度│缩放因子│ ││
+│ │ 描述: [________]     ││ │ │ 1  │ 0  │Roll│float│ 4 │  1.0   │ ││
+│ │                      ││ │ │ 2  │ 4  │Pitch│float│4 │  1.0   │ ││
+│ │ 帧结构               ││ │ └────────────────────────────────────┘ ││
+│ │ 帧头(HEX): [FF AA]   ││ │                                         ││
+│ │ 帧尾(HEX): [0D 0A]   ││ │ ┌─字段详情──────────────────────────┐ ││
+│ │ 长度位置: [2]        ││ │ │ 偏移: [0.0]    单位: [°]          │ ││
+│ │                      ││ │ │ 最大: [180.0]  最小: [-180.0]     │ ││
+│ │ 校验配置             ││ │ │ 描述: [横滚角]                    │ ││
+│ │ 校验方式: [CRC16▼]   ││ │ │ 提示: [Roll angle]                │ ││
+│ │ 起始: [0] 长度: [-1] ││ │ └───────────────────────────────────┘ ││
+│ │ 校验位置: [-1]       ││ │                                         ││
+│ │                      ││ └─────────────────────────────────────────┘│
+│ │ 其他配置             ││                                             │
+│ │ 字节序: [Little▼]    ││                                             │
+│ │ 频率: [1000] Hz      ││                                             │
+│ │ 分隔符: [,]          ││                                             │
+│ └──────────────────────┘│                                             │
+├────────────────────────┴─────────────────────────────────────────────┤
+│ [导入协议] [导出协议] [生成协议] [测试协议]  [确定] [取消] [应用]  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**主要功能：**
+
+1. **多协议管理**
+   - 标签页切换不同协议
+   - 新建/删除协议
+   - 协议名称唯一性验证
+
+2. **帧格式配置**
+   - **协议信息**：名称、版本、描述
+   - **帧结构**：帧头、帧尾（16进制）、长度字段位置
+   - **校验配置**：6种校验方式（无/Sum/XOR/CRC8/CRC16/CRC32）
+   - **其他配置**：字节序（大端/小端）、数据频率、分隔符
+
+3. **数据字段配置**
+   - 表格显示：序号、起始位置、名称、类型、长度、缩放因子
+   - 支持10种数据类型：int8/uint8/int16/uint16/int32/uint32/float/double/mbyte/string
+   - 字段详情编辑：偏移量、单位、最大值、最小值、描述、提示
+   - 字段排序：上移/下移调整顺序
+
+4. **导入导出**
+   - JSON格式导入/导出协议配置
+   - 字段批量导入（待实现）
+   - 协议模板管理
+
+5. **协议生成与测试**
+   - 生成协议：验证配置并保存到ProtocolManager
+   - 测试协议：发送测试数据验证解析（待实现）
+
+6. **数据持久化**
+   - 使用QSettings保存到注册表
+   - 自动加载上次配置
+   - 支持多协议配置保存
+
+**与ProtocolManager集成：**
+
+```cpp
+// 生成协议时自动同步到ProtocolManager
+void CommandSettingsDialog::onGenerateProtocol() {
+    m_protocols[m_currentProtocolName] = getCurrentConfig();
+    saveProtocols();
+    syncToProtocolManager();  // 同步到protocol模块
+}
+
+// 加载时从ProtocolManager同步
+void CommandSettingsDialog::loadProtocols() {
+    // 从QSettings加载
+    // ...
+    syncToProtocolManager();  // 同步到protocol模块
+}
+```
+
+**类型转换工具：**
+
+`app/ui/protocoltypeconverter.h/cpp` 提供UI层类型与protocol模块类型的双向转换：
+
+```cpp
+// UI类型 -> Protocol类型
+::ProtocolConfig protocolConfig =
+    ProtocolTypeConverter::uiToProtocolConfig(uiConfig);
+
+// Protocol类型 -> UI类型
+CommandSettingsDialog::ProtocolConfig uiConfig =
+    ProtocolTypeConverter::protocolToUiConfig(protocolConfig);
+```
+
+**配置示例：**
+
+IMU协议配置示例：
+```json
+{
+    "name": "IMU_Protocol_V1",
+    "version": "1.0.0",
+    "description": "IMU数据协议",
+    "frameFormat": {
+        "header": "FF AA",
+        "footer": "0D 0A",
+        "lengthPosition": 2,
+        "checksumType": "CRC16",
+        "checksumStart": 0,
+        "checksumLength": -1,
+        "checksumPosition": -1,
+        "byteOrder": "LittleEndian",
+        "frequency": 1000,
+        "separator": ""
+    },
+    "fields": [
+        {
+            "index": 1,
+            "elementHead": 0,
+            "name": "Roll",
+            "type": "float",
+            "byteLength": 4,
+            "scale": 1.0,
+            "offset": 0.0,
+            "unit": "°",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "description": "横滚角",
+            "tip": "Roll angle"
+        }
+    ]
+}
+```
+
+**设计规范文档：**
+
+完整的协议配置系统设计规范参见：[docs/protocol-config-system-spec.md](docs/protocol-config-system-spec.md)
+
 ### 通用组件
 
 **Graphics**（`common_component/graphics/`）：
@@ -472,31 +781,41 @@ ROLL,PITCH,YAW,AX,AY,AZ,GX,GY,GZ,MX,MY,MZ,TEMP
 
 ## 关键设计模式
 
-- **单例模式：** `Core_PluginsManager`, `LogManager`, `Config`, `TransferManager`
-- **工厂模式：** `TransferManager` 用于创建传输对象
+- **单例模式：** `Core_PluginsManager`, `LogManager`, `Config`, `TransferManager`, `ProtocolManager`
+- **工厂模式：** `TransferManager` 用于创建传输对象，`ProtocolManager` 用于创建解析器
 - **观察者模式：** Qt 信号/槽，插件消息传递
 - **模板模式：** `AsyncQueue<T>` 用于通用异步处理
-- **策略模式：** 多种传输后端（UART, TCP, Modbus, ACQ）
+- **策略模式：** 多种传输后端（UART, TCP, Modbus, ACQ），多种校验算法
 - **插件架构：** 通过 Qt 插件系统动态加载
 - **MVC 模式：** UI 与业务逻辑分离
+- **适配器模式：** `ProtocolTypeConverter` 用于UI层与protocol模块类型转换
 
 ## 重要文件位置
 
 | 组件 | 关键文件 |
 |------|---------|
 | 主应用 | `app/main.cpp`, `app/ui/mainwindow.h/cpp` |
-| 指令设置 | `app/ui/commandsettingsdialog.h/cpp` |
+| 协议配置 | `app/ui/commandsettingsdialog.h/cpp` |
+| 类型转换 | `app/ui/protocoltypeconverter.h/cpp` |
 | 设备管理 | `app/device/devicemanager.h` |
 | 插件管理 | `core_plugin/core_plugins_manager/core_pluginsmanager.h` |
 | 插件基类 | `core_plugin/core_plugins_manager/core_pluginsbase.h` |
 | 算法处理 | `algorithm/algorithmprocessor.h` |
+| 协议配置 | `protocol/protocolconfig.h/cpp` |
+| 协议解析 | `protocol/protocolparser.h/cpp` |
+| 协议管理 | `protocol/protocolmanager.h/cpp` |
+| 校验计算 | `protocol/checksumcalculator.h/cpp` |
+| 类型转换 | `protocol/datatypeconverter.h/cpp` |
 | 传输基类 | `transfer/transferbasic.h` |
 | 传输工厂 | `transfer/transfermanager.h` |
+| 串口传输 | `transfer/uart/scopeuart.h/cpp` |
 | UI 组件 | `common_component/graphics/`, `common_component/plot/` |
 | 配置管理 | `app/config/config.h` |
 | 工具类 | `util/async_queue.h`, `util/timehelper.h` |
 | 样式表 | `app/qss/light.qss`, `app/qss/dark.qss` |
 | 资源文件 | `app/resources.qrc` |
+| 设计文档 | `docs/protocol-config-system-spec.md` |
+| 集成指南 | `docs/scopeuart-integration-guide.md` |
 
 ## 开发注意事项
 
@@ -715,6 +1034,157 @@ ROLL,PITCH,YAW,AX,AY,AZ,GX,GY,GZ,MX,MY,MZ,TEMP
 - 修改的实现文件：`app/ui/mainwindow.cpp`
 - 修改的配置文件：`app/app.pro`
 
+#### 2026-01-27: Protocol模块实现与集成
+
+实现了完整的协议配置与动态解析系统，支持多协议管理和灵活的数据解析。
+
+**✅ 新增模块：protocol**
+
+创建了完整的protocol静态库模块（`libprotocol`），包含以下组件：
+
+1. **ProtocolConfig**（`protocol/protocolconfig.h/cpp`）
+   - 协议配置数据结构定义
+   - JSON序列化/反序列化
+   - 文件加载/保存功能
+   - 16进制字符串转换
+   - 配置验证
+
+2. **ChecksumCalculator**（`protocol/checksumcalculator.h/cpp`）
+   - Sum（累加和）算法
+   - XOR（异或）算法
+   - CRC8算法
+   - CRC16算法（MODBUS标准）
+   - CRC32算法（IEEE 802.3标准，带查找表优化）
+
+3. **DataTypeConverter**（`protocol/datatypeconverter.h/cpp`）
+   - 支持10种数据类型：int8/uint8/int16/uint16/int32/uint32/float/double/mbyte/string
+   - 大小端转换（使用Qt的qFromLittleEndian/qFromBigEndian）
+   - 缩放因子和偏移量支持
+   - 多字节整数（mbyte_t）特殊处理（符号扩展+缩放）
+
+4. **ProtocolParser**（`protocol/protocolparser.h/cpp`）
+   - 动态协议解析引擎
+   - 三种帧提取方法：
+     - 基于长度字段
+     - 基于帧尾标记
+     - 基于字段配置计算
+   - 校验码验证
+   - 字段数据提取
+   - ParseResult结构返回解析结果
+
+5. **ProtocolManager**（`protocol/protocolmanager.h/cpp`）
+   - 单例模式实现
+   - 协议CRUD操作
+   - 解析器工厂方法
+   - 当前协议管理
+   - 线程安全（QMutex保护）
+   - 信号通知（protocolAdded/protocolRemoved/currentProtocolChanged）
+
+6. **构建配置**（`protocol/protocol.pro`）
+   - 静态库配置
+   - 依赖util模块
+   - 包含所有头文件和源文件
+
+**✅ CommandSettingsDialog升级**
+
+将原指令设置对话框升级为完整的协议配置系统：
+
+1. **UI功能扩展**（`app/ui/commandsettingsdialog.h/cpp`）
+   - 多协议标签页管理
+   - 帧格式配置界面
+   - 数据字段配置表格
+   - 字段详情编辑
+   - JSON导入/导出
+   - 协议生成与测试
+
+2. **数据结构定义**
+   - DataType枚举（10种类型）
+   - ByteOrder枚举（大端/小端）
+   - ChecksumType枚举（6种校验）
+   - FieldConfig结构（12个属性）
+   - ProtocolConfig结构（完整配置）
+
+3. **持久化**
+   - 使用QSettings保存到注册表
+   - JSON格式序列化
+   - 自动加载上次配置
+
+**✅ 类型转换工具**
+
+创建了UI层与protocol模块之间的类型转换工具：
+
+1. **ProtocolTypeConverter**（`app/ui/protocoltypeconverter.h/cpp`）
+   - 枚举类型双向转换（DataType/ByteOrder/ChecksumType）
+   - 结构体双向转换（FieldConfig/ProtocolConfig）
+   - 适配器模式实现
+   - 保持UI层独立性
+
+**✅ 集成实现**
+
+1. **CommandSettingsDialog与ProtocolManager集成**
+   - 实现`syncToProtocolManager()`：UI配置同步到protocol模块
+   - 实现`syncFromProtocolManager()`：从protocol模块加载配置
+   - 在`onGenerateProtocol()`中自动同步
+   - 在`loadProtocols()`中自动同步
+
+2. **构建系统更新**
+   - 更新`GenericScope.pro`：添加protocol模块到SUBDIRS
+   - 配置模块依赖：protocol.depends = util
+   - 更新app/transfer/core_plugin依赖protocol
+   - 更新`app/app.pro`：
+     - 添加`-lprotocol`库链接
+     - 添加protocoltypeconverter文件
+     - 添加protocol包含路径
+
+3. **ScopeUart集成指南**
+   - 创建`docs/scopeuart-integration-guide.md`
+   - 提供完整的集成示例代码
+   - 说明如何在ScopeUart中使用ProtocolParser
+   - 包含使用示例和注意事项
+
+**📊 技术特性：**
+
+- **线程安全**：ProtocolManager使用QMutex保护
+- **性能优化**：CRC32使用查找表，避免重复计算
+- **灵活性**：支持多种数据类型和校验方式
+- **可扩展性**：易于添加新的数据类型和校验算法
+- **类型安全**：通过ProtocolTypeConverter保证类型一致性
+- **Qt 5.14兼容**：所有代码完全兼容Qt 5.14
+
+**🔍 设计亮点：**
+
+- **模块化设计**：protocol模块独立，可复用
+- **适配器模式**：UI层与protocol模块解耦
+- **工厂模式**：ProtocolManager创建解析器
+- **单例模式**：ProtocolManager全局唯一
+- **策略模式**：多种校验算法可选
+- **观察者模式**：信号通知协议变化
+
+**📁 新增文件清单：**
+
+```
+protocol/
+├── protocol.pro                    # 构建配置
+├── protocolconfig.h/cpp            # 协议配置
+├── protocolparser.h/cpp            # 协议解析器
+├── protocolmanager.h/cpp           # 协议管理器
+├── checksumcalculator.h/cpp        # 校验计算器
+└── datatypeconverter.h/cpp         # 数据类型转换器
+
+app/ui/
+├── protocoltypeconverter.h/cpp     # 类型转换工具
+
+docs/
+├── protocol-config-system-spec.md  # 设计规范文档
+└── scopeuart-integration-guide.md  # 集成指南
+```
+
+**参考文档：**
+- 设计规范：`docs/protocol-config-system-spec.md`
+- 集成指南：`docs/scopeuart-integration-guide.md`
+- 协议配置：`app/ui/commandsettingsdialog.h/cpp`
+- 类型转换：`app/ui/protocoltypeconverter.h/cpp`
+
 ### 编译器设置
 - 需要 C++17 标准
 - MSVC 使用 UTF-8 编码（`/utf-8` 标志）
@@ -858,6 +1328,14 @@ ROLL,PITCH,YAW,AX,AY,AZ,GX,GY,GZ,MX,MY,MZ,TEMP
   - [x] 实时图表绘制
   - [x] 主题切换功能
   - [ ] 3D 可视化实现
+- [x] 协议配置与解析系统
+  - [x] 协议配置数据结构
+  - [x] 协议解析引擎
+  - [x] 校验码计算器
+  - [x] 数据类型转换器
+  - [x] 协议管理器（单例）
+  - [x] UI集成（CommandSettingsDialog）
+  - [ ] ScopeUart集成
 - [ ] 基础模块实现（algorithm, util, transfer）
 - [ ] 插件系统实现
 

@@ -1,0 +1,46 @@
+{
+    "fields": [
+        {
+            "index": 1,
+            "elementHead": 0,
+            "name": "Roll",
+            "type": "float",
+            "byteLength": 4,
+            "scale": 1.0,
+            "offset": 0.0,
+            "unit": "°",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "description": "横滚角",
+            "tip": "Roll angle"
+        },
+        {
+            "index": 2,
+            "elementHead": 4,
+            "name": "Pitch",
+            "type": "float",
+            "byteLength": 4,
+            "scale": 1.0,
+            "offset": 0.0,
+            "unit": "°",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "description": "俯仰角",
+            "tip": "Pitch angle"
+        },
+        {
+            "index": 3,
+            "elementHead": 8,
+            "name": "Yaw",
+            "type": "float",
+            "byteLength": 4,
+            "scale": 1.0,
+            "offset": 0.0,
+            "unit": "°",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "description": "偏航角",
+            "tip": "Yaw angle"
+        }
+    ]
+}
