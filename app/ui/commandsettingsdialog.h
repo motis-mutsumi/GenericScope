@@ -153,7 +153,6 @@ private slots:
     void onDeleteField();
     void onMoveFieldUp();
     void onMoveFieldDown();
-    void onFieldSelectionChanged();
     void onFieldCellChanged(int row, int column);
 
     // 导入导出
@@ -180,7 +179,6 @@ private:
     void updateProtocolTabs();
     void updateFrameFormatUI();
     void updateFieldTable();
-    void updateFieldDetails();
 
     ProtocolConfig getCurrentConfig() const;
     void setCurrentConfig(const ProtocolConfig &config);
@@ -244,15 +242,6 @@ private:
     QPushButton *m_moveDownBtn;
     QPushButton *m_importFieldBtn;
 
-    // UI组件 - 字段详情
-    QGroupBox *m_fieldDetailGroup;
-    QDoubleSpinBox *m_fieldOffsetSpin;
-    QLineEdit *m_fieldUnitEdit;
-    QDoubleSpinBox *m_fieldMaxSpin;
-    QDoubleSpinBox *m_fieldMinSpin;
-    QLineEdit *m_fieldDescEdit;
-    QLineEdit *m_fieldTipEdit;
-
     // UI组件 - 底部按钮
     QPushButton *m_importProtocolBtn;
     QPushButton *m_exportProtocolBtn;
@@ -272,6 +261,12 @@ private:
     static const int kFieldTableTypeColumn = 3;
     static const int kFieldTableByteLengthColumn = 4;
     static const int kFieldTableScaleColumn = 5;
+    static const int kFieldTableOffsetColumn = 6;
+    static const int kFieldTableUnitColumn = 7;
+    static const int kFieldTableMaxColumn = 8;
+    static const int kFieldTableMinColumn = 9;
+    static const int kFieldTableDescColumn = 10;
+    static const int kFieldTableTipColumn = 11;
 };
 
 #endif // COMMANDSETTINGSDIALOG_H

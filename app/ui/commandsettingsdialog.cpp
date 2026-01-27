@@ -28,6 +28,12 @@ const int CommandSettingsDialog::kFieldTableNameColumn;
 const int CommandSettingsDialog::kFieldTableTypeColumn;
 const int CommandSettingsDialog::kFieldTableByteLengthColumn;
 const int CommandSettingsDialog::kFieldTableScaleColumn;
+const int CommandSettingsDialog::kFieldTableOffsetColumn;
+const int CommandSettingsDialog::kFieldTableUnitColumn;
+const int CommandSettingsDialog::kFieldTableMaxColumn;
+const int CommandSettingsDialog::kFieldTableMinColumn;
+const int CommandSettingsDialog::kFieldTableDescColumn;
+const int CommandSettingsDialog::kFieldTableTipColumn;
 
 CommandSettingsDialog::CommandSettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -225,11 +231,12 @@ void CommandSettingsDialog::setupFieldConfigGroup()
 
     mainLayout->addLayout(toolbarLayout);
 
-    // 字段表格
+    // 字段表格 - 包含所有12列
     m_fieldTable = new QTableWidget(this);
-    m_fieldTable->setColumnCount(6);
+    m_fieldTable->setColumnCount(12);
     m_fieldTable->setHorizontalHeaderLabels({
-        "序号", "起始", "名称", "类型", "长度", "缩放因子"
+        "序号", "起始", "名称", "类型", "长度", "缩放因子",
+        "偏移量", "单位", "最大值", "最小值", "描述", "提示"
     });
 
     m_fieldTable->horizontalHeader()->setStretchLastSection(true);
@@ -244,49 +251,14 @@ void CommandSettingsDialog::setupFieldConfigGroup()
     m_fieldTable->setColumnWidth(kFieldTableNameColumn, 100);
     m_fieldTable->setColumnWidth(kFieldTableTypeColumn, 100);
     m_fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);
+    m_fieldTable->setColumnWidth(kFieldTableScaleColumn, 80);
+    m_fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);
+    m_fieldTable->setColumnWidth(kFieldTableUnitColumn, 60);
+    m_fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);
+    m_fieldTable->setColumnWidth(kFieldTableMinColumn, 80);
+    m_fieldTable->setColumnWidth(kFieldTableDescColumn, 120);
 
     mainLayout->addWidget(m_fieldTable);
-
-    // 字段详情
-    m_fieldDetailGroup = new QGroupBox("字段详情", this);
-    QFormLayout *detailLayout = new QFormLayout(m_fieldDetailGroup);
-
-    QHBoxLayout *rangeLayout = new QHBoxLayout();
-    m_fieldOffsetSpin = new QDoubleSpinBox(this);
-    m_fieldOffsetSpin->setRange(-1e6, 1e6);
-    m_fieldOffsetSpin->setDecimals(6);
-    rangeLayout->addWidget(new QLabel("偏移:", this));
-    rangeLayout->addWidget(m_fieldOffsetSpin);
-
-    m_fieldUnitEdit = new QLineEdit(this);
-    m_fieldUnitEdit->setPlaceholderText("例如: °/s");
-    rangeLayout->addWidget(new QLabel("单位:", this));
-    rangeLayout->addWidget(m_fieldUnitEdit);
-    detailLayout->addRow("", rangeLayout);
-
-    QHBoxLayout *limitLayout = new QHBoxLayout();
-    m_fieldMaxSpin = new QDoubleSpinBox(this);
-    m_fieldMaxSpin->setRange(-1e6, 1e6);
-    m_fieldMaxSpin->setDecimals(3);
-    limitLayout->addWidget(new QLabel("最大:", this));
-    limitLayout->addWidget(m_fieldMaxSpin);
-
-    m_fieldMinSpin = new QDoubleSpinBox(this);
-    m_fieldMinSpin->setRange(-1e6, 1e6);
-    m_fieldMinSpin->setDecimals(3);
-    limitLayout->addWidget(new QLabel("最小:", this));
-    limitLayout->addWidget(m_fieldMinSpin);
-    detailLayout->addRow("", limitLayout);
-
-    m_fieldDescEdit = new QLineEdit(this);
-    m_fieldDescEdit->setPlaceholderText("字段描述");
-    detailLayout->addRow("描述:", m_fieldDescEdit);
-
-    m_fieldTipEdit = new QLineEdit(this);
-    m_fieldTipEdit->setPlaceholderText("提示信息");
-    detailLayout->addRow("提示:", m_fieldTipEdit);
-
-    mainLayout->addWidget(m_fieldDetailGroup);
 }
 
 void CommandSettingsDialog::setupButtons()
@@ -353,8 +325,6 @@ void CommandSettingsDialog::setupConnections()
             this, &CommandSettingsDialog::onMoveFieldDown);
     connect(m_importFieldBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onImportFields);
-    connect(m_fieldTable, &QTableWidget::itemSelectionChanged,
-            this, &CommandSettingsDialog::onFieldSelectionChanged);
     connect(m_fieldTable, &QTableWidget::cellChanged,
             this, &CommandSettingsDialog::onFieldCellChanged);
 
@@ -487,7 +457,7 @@ void CommandSettingsDialog::onAddField()
     int row = m_fieldTable->rowCount();
     m_fieldTable->insertRow(row);
 
-    // 设置默认值
+    // 设置默认值 - 所有12列
     m_fieldTable->setItem(row, kFieldTableIndexColumn,
                           new QTableWidgetItem(QString::number(row + 1)));
     m_fieldTable->setItem(row, kFieldTableElementHeadColumn,
@@ -507,6 +477,18 @@ void CommandSettingsDialog::onAddField()
                           new QTableWidgetItem("2"));
     m_fieldTable->setItem(row, kFieldTableScaleColumn,
                           new QTableWidgetItem("1.0"));
+    m_fieldTable->setItem(row, kFieldTableOffsetColumn,
+                          new QTableWidgetItem("0.0"));
+    m_fieldTable->setItem(row, kFieldTableUnitColumn,
+                          new QTableWidgetItem(""));
+    m_fieldTable->setItem(row, kFieldTableMaxColumn,
+                          new QTableWidgetItem("0.0"));
+    m_fieldTable->setItem(row, kFieldTableMinColumn,
+                          new QTableWidgetItem("0.0"));
+    m_fieldTable->setItem(row, kFieldTableDescColumn,
+                          new QTableWidgetItem(""));
+    m_fieldTable->setItem(row, kFieldTableTipColumn,
+                          new QTableWidgetItem(""));
 
     m_isModified = true;
 }
@@ -573,11 +555,6 @@ void CommandSettingsDialog::onMoveFieldDown()
 
     m_fieldTable->setCurrentCell(currentRow + 1, 0);
     m_isModified = true;
-}
-
-void CommandSettingsDialog::onFieldSelectionChanged()
-{
-    updateFieldDetails();
 }
 
 void CommandSettingsDialog::onFieldCellChanged(int row, int column)
@@ -898,6 +875,7 @@ void CommandSettingsDialog::updateFieldTable()
         int row = m_fieldTable->rowCount();
         m_fieldTable->insertRow(row);
 
+        // 设置所有12列的值
         m_fieldTable->setItem(row, kFieldTableIndexColumn,
                               new QTableWidgetItem(QString::number(field.index)));
         m_fieldTable->setItem(row, kFieldTableElementHeadColumn,
@@ -916,33 +894,19 @@ void CommandSettingsDialog::updateFieldTable()
                               new QTableWidgetItem(QString::number(field.byteLength)));
         m_fieldTable->setItem(row, kFieldTableScaleColumn,
                               new QTableWidgetItem(QString::number(field.scale, 'g', 6)));
+        m_fieldTable->setItem(row, kFieldTableOffsetColumn,
+                              new QTableWidgetItem(QString::number(field.offset, 'g', 6)));
+        m_fieldTable->setItem(row, kFieldTableUnitColumn,
+                              new QTableWidgetItem(field.unit));
+        m_fieldTable->setItem(row, kFieldTableMaxColumn,
+                              new QTableWidgetItem(QString::number(field.maximum, 'g', 6)));
+        m_fieldTable->setItem(row, kFieldTableMinColumn,
+                              new QTableWidgetItem(QString::number(field.minimum, 'g', 6)));
+        m_fieldTable->setItem(row, kFieldTableDescColumn,
+                              new QTableWidgetItem(field.description));
+        m_fieldTable->setItem(row, kFieldTableTipColumn,
+                              new QTableWidgetItem(field.tip));
     }
-}
-
-void CommandSettingsDialog::updateFieldDetails()
-{
-    int currentRow = m_fieldTable->currentRow();
-    if (currentRow < 0) {
-        return;
-    }
-
-    if (!m_protocols.contains(m_currentProtocolName)) {
-        return;
-    }
-
-    const ProtocolConfig &config = m_protocols[m_currentProtocolName];
-    if (currentRow >= config.fields.size()) {
-        return;
-    }
-
-    const FieldConfig &field = config.fields[currentRow];
-
-    m_fieldOffsetSpin->setValue(field.offset);
-    m_fieldUnitEdit->setText(field.unit);
-    m_fieldMaxSpin->setValue(field.maximum);
-    m_fieldMinSpin->setValue(field.minimum);
-    m_fieldDescEdit->setText(field.description);
-    m_fieldTipEdit->setText(field.tip);
 }
 
 // ========== 配置管理函数 ==========
@@ -968,7 +932,7 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
     config.frequency = m_frequencySpin->value();
     config.separator = m_separatorEdit->text().trimmed();
 
-    // 读取字段配置
+    // 读取字段配置 - 从所有12列读取
     config.fields.clear();
     for (int row = 0; row < m_fieldTable->rowCount(); ++row) {
         FieldConfig field;
@@ -984,16 +948,12 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
 
         field.byteLength = m_fieldTable->item(row, kFieldTableByteLengthColumn)->text().toInt();
         field.scale = m_fieldTable->item(row, kFieldTableScaleColumn)->text().toDouble();
-
-        // 如果是当前选中行，从详情区读取额外信息
-        if (row == m_fieldTable->currentRow()) {
-            field.offset = m_fieldOffsetSpin->value();
-            field.unit = m_fieldUnitEdit->text();
-            field.maximum = m_fieldMaxSpin->value();
-            field.minimum = m_fieldMinSpin->value();
-            field.description = m_fieldDescEdit->text();
-            field.tip = m_fieldTipEdit->text();
-        }
+        field.offset = m_fieldTable->item(row, kFieldTableOffsetColumn)->text().toDouble();
+        field.unit = m_fieldTable->item(row, kFieldTableUnitColumn)->text();
+        field.maximum = m_fieldTable->item(row, kFieldTableMaxColumn)->text().toDouble();
+        field.minimum = m_fieldTable->item(row, kFieldTableMinColumn)->text().toDouble();
+        field.description = m_fieldTable->item(row, kFieldTableDescColumn)->text();
+        field.tip = m_fieldTable->item(row, kFieldTableTipColumn)->text();
 
         config.fields.append(field);
     }

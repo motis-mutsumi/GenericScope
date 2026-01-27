@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_CommandSettingsDialog_t {
-    QByteArrayData data[26];
-    char stringdata0[370];
+    QByteArrayData data[25];
+    char stringdata0[346];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -46,18 +46,17 @@ QT_MOC_LITERAL(10, 156, 10), // "onAddField"
 QT_MOC_LITERAL(11, 167, 13), // "onDeleteField"
 QT_MOC_LITERAL(12, 181, 13), // "onMoveFieldUp"
 QT_MOC_LITERAL(13, 195, 15), // "onMoveFieldDown"
-QT_MOC_LITERAL(14, 211, 23), // "onFieldSelectionChanged"
-QT_MOC_LITERAL(15, 235, 18), // "onFieldCellChanged"
-QT_MOC_LITERAL(16, 254, 3), // "row"
-QT_MOC_LITERAL(17, 258, 6), // "column"
-QT_MOC_LITERAL(18, 265, 16), // "onImportProtocol"
-QT_MOC_LITERAL(19, 282, 16), // "onExportProtocol"
-QT_MOC_LITERAL(20, 299, 14), // "onImportFields"
-QT_MOC_LITERAL(21, 314, 18), // "onGenerateProtocol"
-QT_MOC_LITERAL(22, 333, 14), // "onTestProtocol"
-QT_MOC_LITERAL(23, 348, 7), // "onApply"
-QT_MOC_LITERAL(24, 356, 4), // "onOk"
-QT_MOC_LITERAL(25, 361, 8) // "onCancel"
+QT_MOC_LITERAL(14, 211, 18), // "onFieldCellChanged"
+QT_MOC_LITERAL(15, 230, 3), // "row"
+QT_MOC_LITERAL(16, 234, 6), // "column"
+QT_MOC_LITERAL(17, 241, 16), // "onImportProtocol"
+QT_MOC_LITERAL(18, 258, 16), // "onExportProtocol"
+QT_MOC_LITERAL(19, 275, 14), // "onImportFields"
+QT_MOC_LITERAL(20, 290, 18), // "onGenerateProtocol"
+QT_MOC_LITERAL(21, 309, 14), // "onTestProtocol"
+QT_MOC_LITERAL(22, 324, 7), // "onApply"
+QT_MOC_LITERAL(23, 332, 4), // "onOk"
+QT_MOC_LITERAL(24, 337, 8) // "onCancel"
 
     },
     "CommandSettingsDialog\0onNewProtocol\0"
@@ -65,11 +64,11 @@ QT_MOC_LITERAL(25, 361, 8) // "onCancel"
     "onFrameHeaderChanged\0onFrameFooterChanged\0"
     "onChecksumTypeChanged\0onByteOrderChanged\0"
     "onAddField\0onDeleteField\0onMoveFieldUp\0"
-    "onMoveFieldDown\0onFieldSelectionChanged\0"
-    "onFieldCellChanged\0row\0column\0"
-    "onImportProtocol\0onExportProtocol\0"
-    "onImportFields\0onGenerateProtocol\0"
-    "onTestProtocol\0onApply\0onOk\0onCancel"
+    "onMoveFieldDown\0onFieldCellChanged\0"
+    "row\0column\0onImportProtocol\0"
+    "onExportProtocol\0onImportFields\0"
+    "onGenerateProtocol\0onTestProtocol\0"
+    "onApply\0onOk\0onCancel"
 };
 #undef QT_MOC_LITERAL
 
@@ -79,7 +78,7 @@ static const uint qt_meta_data_CommandSettingsDialog[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      21,   14, // methods
+      20,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -87,27 +86,26 @@ static const uint qt_meta_data_CommandSettingsDialog[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,  119,    2, 0x08 /* Private */,
-       3,    0,  120,    2, 0x08 /* Private */,
-       4,    1,  121,    2, 0x08 /* Private */,
-       6,    0,  124,    2, 0x08 /* Private */,
-       7,    0,  125,    2, 0x08 /* Private */,
-       8,    1,  126,    2, 0x08 /* Private */,
-       9,    1,  129,    2, 0x08 /* Private */,
-      10,    0,  132,    2, 0x08 /* Private */,
-      11,    0,  133,    2, 0x08 /* Private */,
-      12,    0,  134,    2, 0x08 /* Private */,
-      13,    0,  135,    2, 0x08 /* Private */,
-      14,    0,  136,    2, 0x08 /* Private */,
-      15,    2,  137,    2, 0x08 /* Private */,
-      18,    0,  142,    2, 0x08 /* Private */,
-      19,    0,  143,    2, 0x08 /* Private */,
-      20,    0,  144,    2, 0x08 /* Private */,
-      21,    0,  145,    2, 0x08 /* Private */,
-      22,    0,  146,    2, 0x08 /* Private */,
-      23,    0,  147,    2, 0x08 /* Private */,
-      24,    0,  148,    2, 0x08 /* Private */,
-      25,    0,  149,    2, 0x08 /* Private */,
+       1,    0,  114,    2, 0x08 /* Private */,
+       3,    0,  115,    2, 0x08 /* Private */,
+       4,    1,  116,    2, 0x08 /* Private */,
+       6,    0,  119,    2, 0x08 /* Private */,
+       7,    0,  120,    2, 0x08 /* Private */,
+       8,    1,  121,    2, 0x08 /* Private */,
+       9,    1,  124,    2, 0x08 /* Private */,
+      10,    0,  127,    2, 0x08 /* Private */,
+      11,    0,  128,    2, 0x08 /* Private */,
+      12,    0,  129,    2, 0x08 /* Private */,
+      13,    0,  130,    2, 0x08 /* Private */,
+      14,    2,  131,    2, 0x08 /* Private */,
+      17,    0,  136,    2, 0x08 /* Private */,
+      18,    0,  137,    2, 0x08 /* Private */,
+      19,    0,  138,    2, 0x08 /* Private */,
+      20,    0,  139,    2, 0x08 /* Private */,
+      21,    0,  140,    2, 0x08 /* Private */,
+      22,    0,  141,    2, 0x08 /* Private */,
+      23,    0,  142,    2, 0x08 /* Private */,
+      24,    0,  143,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void,
@@ -121,8 +119,7 @@ static const uint qt_meta_data_CommandSettingsDialog[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void,
-    QMetaType::Void, QMetaType::Int, QMetaType::Int,   16,   17,
+    QMetaType::Void, QMetaType::Int, QMetaType::Int,   15,   16,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
@@ -152,16 +149,15 @@ void CommandSettingsDialog::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 8: _t->onDeleteField(); break;
         case 9: _t->onMoveFieldUp(); break;
         case 10: _t->onMoveFieldDown(); break;
-        case 11: _t->onFieldSelectionChanged(); break;
-        case 12: _t->onFieldCellChanged((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
-        case 13: _t->onImportProtocol(); break;
-        case 14: _t->onExportProtocol(); break;
-        case 15: _t->onImportFields(); break;
-        case 16: _t->onGenerateProtocol(); break;
-        case 17: _t->onTestProtocol(); break;
-        case 18: _t->onApply(); break;
-        case 19: _t->onOk(); break;
-        case 20: _t->onCancel(); break;
+        case 11: _t->onFieldCellChanged((*reinterpret_cast< int(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
+        case 12: _t->onImportProtocol(); break;
+        case 13: _t->onExportProtocol(); break;
+        case 14: _t->onImportFields(); break;
+        case 15: _t->onGenerateProtocol(); break;
+        case 16: _t->onTestProtocol(); break;
+        case 17: _t->onApply(); break;
+        case 18: _t->onOk(); break;
+        case 19: _t->onCancel(); break;
         default: ;
         }
     }
@@ -196,13 +192,13 @@ int CommandSettingsDialog::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 21)
+        if (_id < 20)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 21;
+        _id -= 20;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 21)
+        if (_id < 20)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 21;
+        _id -= 20;
     }
     return _id;
 }
