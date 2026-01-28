@@ -96,10 +96,12 @@ FieldConfig FieldConfig::fromJson(const QJsonObject &json)
 ProtocolConfig::ProtocolConfig()
     : lengthPosition(-1)
     , checksumType(ChecksumType::None)
+    , checksumScope(ChecksumScope::AfterHeader)  // 默认从帧头后开始（常见场景）
     , checksumStart(0)
     , checksumLength(-1)
     , checksumPosition(-1)
     , byteOrder(ByteOrder::LittleEndian)
+    , checksumByteOrder(ByteOrder::LittleEndian)  // 默认与数据字节序相同
     , frequency(1000)
 {
 }
@@ -126,16 +128,29 @@ QJsonObject ProtocolConfig::toJson() const
         case ChecksumType::Sum: checksumStr = "Sum"; break;
         case ChecksumType::XOR: checksumStr = "XOR"; break;
         case ChecksumType::CRC8: checksumStr = "CRC8"; break;
-        case ChecksumType::CRC16: checksumStr = "CRC16"; break;
+        case ChecksumType::CRC16_MODBUS: checksumStr = "CRC16_MODBUS"; break;
+        case ChecksumType::CRC16_CCITT: checksumStr = "CRC16_CCITT"; break;
         case ChecksumType::CRC32: checksumStr = "CRC32"; break;
         default: checksumStr = "None"; break;
     }
     frameFormat["checksumType"] = checksumStr;
 
+    // 校验范围转换为字符串
+    QString checksumScopeStr;
+    switch (checksumScope) {
+        case ChecksumScope::FullFrame: checksumScopeStr = "FullFrame"; break;
+        case ChecksumScope::AfterHeader: checksumScopeStr = "AfterHeader"; break;
+        case ChecksumScope::DataOnly: checksumScopeStr = "DataOnly"; break;
+        case ChecksumScope::Custom: checksumScopeStr = "Custom"; break;
+        default: checksumScopeStr = "AfterHeader"; break;
+    }
+    frameFormat["checksumScope"] = checksumScopeStr;
+
     frameFormat["checksumStart"] = checksumStart;
     frameFormat["checksumLength"] = checksumLength;
     frameFormat["checksumPosition"] = checksumPosition;
     frameFormat["byteOrder"] = (byteOrder == ByteOrder::LittleEndian) ? "LittleEndian" : "BigEndian";
+    frameFormat["checksumByteOrder"] = (checksumByteOrder == ByteOrder::LittleEndian) ? "LittleEndian" : "BigEndian";
     frameFormat["frequency"] = frequency;
     frameFormat["separator"] = separator;
     json["frameFormat"] = frameFormat;
@@ -177,9 +192,20 @@ ProtocolConfig ProtocolConfig::fromJson(const QJsonObject &json)
     if (checksumStr == "Sum") config.checksumType = ChecksumType::Sum;
     else if (checksumStr == "XOR") config.checksumType = ChecksumType::XOR;
     else if (checksumStr == "CRC8") config.checksumType = ChecksumType::CRC8;
-    else if (checksumStr == "CRC16") config.checksumType = ChecksumType::CRC16;
+    else if (checksumStr == "CRC16_MODBUS") config.checksumType = ChecksumType::CRC16_MODBUS;
+    else if (checksumStr == "CRC16_CCITT") config.checksumType = ChecksumType::CRC16_CCITT;
+    else if (checksumStr == "CRC16") config.checksumType = ChecksumType::CRC16_MODBUS;  // 向后兼容
     else if (checksumStr == "CRC32") config.checksumType = ChecksumType::CRC32;
     else config.checksumType = ChecksumType::None;
+
+    // 解析校验范围
+    QString checksumScopeStr = frameFormat["checksumScope"].toString();
+    if (checksumScopeStr == "FullFrame") config.checksumScope = ChecksumScope::FullFrame;
+    else if (checksumScopeStr == "AfterHeader") config.checksumScope = ChecksumScope::AfterHeader;
+    else if (checksumScopeStr == "DataOnly") config.checksumScope = ChecksumScope::DataOnly;
+    else if (checksumScopeStr == "Custom") config.checksumScope = ChecksumScope::Custom;
+    else if (checksumScopeStr.isEmpty()) config.checksumScope = ChecksumScope::Custom;  // 向后兼容：旧配置没有此字段
+    else config.checksumScope = ChecksumScope::AfterHeader;
 
     config.checksumStart = frameFormat["checksumStart"].toInt(0);
     config.checksumLength = frameFormat["checksumLength"].toInt(-1);
@@ -187,6 +213,14 @@ ProtocolConfig ProtocolConfig::fromJson(const QJsonObject &json)
 
     QString byteOrderStr = frameFormat["byteOrder"].toString();
     config.byteOrder = (byteOrderStr == "LittleEndian") ? ByteOrder::LittleEndian : ByteOrder::BigEndian;
+
+    // 读取校验码字节序，如果不存在则使用数据字节序
+    QString checksumByteOrderStr = frameFormat["checksumByteOrder"].toString();
+    if (!checksumByteOrderStr.isEmpty()) {
+        config.checksumByteOrder = (checksumByteOrderStr == "LittleEndian") ? ByteOrder::LittleEndian : ByteOrder::BigEndian;
+    } else {
+        config.checksumByteOrder = config.byteOrder;  // 向后兼容：默认与数据字节序相同
+    }
 
     config.frequency = frameFormat["frequency"].toInt(1000);
     config.separator = frameFormat["separator"].toString();

@@ -61,12 +61,13 @@ CommandSettingsDialog::ByteOrder ProtocolTypeConverter::protocolToUiByteOrder(::
 ::ChecksumType ProtocolTypeConverter::uiToProtocolChecksumType(CommandSettingsDialog::ChecksumType uiType)
 {
     switch (uiType) {
-        case CommandSettingsDialog::ChecksumType::None:   return ::ChecksumType::None;
-        case CommandSettingsDialog::ChecksumType::Sum:    return ::ChecksumType::Sum;
-        case CommandSettingsDialog::ChecksumType::XOR:    return ::ChecksumType::XOR;
-        case CommandSettingsDialog::ChecksumType::CRC8:   return ::ChecksumType::CRC8;
-        case CommandSettingsDialog::ChecksumType::CRC16:  return ::ChecksumType::CRC16;
-        case CommandSettingsDialog::ChecksumType::CRC32:  return ::ChecksumType::CRC32;
+        case CommandSettingsDialog::ChecksumType::None:          return ::ChecksumType::None;
+        case CommandSettingsDialog::ChecksumType::Sum:           return ::ChecksumType::Sum;
+        case CommandSettingsDialog::ChecksumType::XOR:           return ::ChecksumType::XOR;
+        case CommandSettingsDialog::ChecksumType::CRC8:          return ::ChecksumType::CRC8;
+        case CommandSettingsDialog::ChecksumType::CRC16_MODBUS:  return ::ChecksumType::CRC16_MODBUS;
+        case CommandSettingsDialog::ChecksumType::CRC16_CCITT:   return ::ChecksumType::CRC16_CCITT;
+        case CommandSettingsDialog::ChecksumType::CRC32:         return ::ChecksumType::CRC32;
         default: return ::ChecksumType::None;
     }
 }
@@ -74,13 +75,38 @@ CommandSettingsDialog::ByteOrder ProtocolTypeConverter::protocolToUiByteOrder(::
 CommandSettingsDialog::ChecksumType ProtocolTypeConverter::protocolToUiChecksumType(::ChecksumType protocolType)
 {
     switch (protocolType) {
-        case ::ChecksumType::None:   return CommandSettingsDialog::ChecksumType::None;
-        case ::ChecksumType::Sum:    return CommandSettingsDialog::ChecksumType::Sum;
-        case ::ChecksumType::XOR:    return CommandSettingsDialog::ChecksumType::XOR;
-        case ::ChecksumType::CRC8:   return CommandSettingsDialog::ChecksumType::CRC8;
-        case ::ChecksumType::CRC16:  return CommandSettingsDialog::ChecksumType::CRC16;
-        case ::ChecksumType::CRC32:  return CommandSettingsDialog::ChecksumType::CRC32;
+        case ::ChecksumType::None:          return CommandSettingsDialog::ChecksumType::None;
+        case ::ChecksumType::Sum:           return CommandSettingsDialog::ChecksumType::Sum;
+        case ::ChecksumType::XOR:           return CommandSettingsDialog::ChecksumType::XOR;
+        case ::ChecksumType::CRC8:          return CommandSettingsDialog::ChecksumType::CRC8;
+        case ::ChecksumType::CRC16_MODBUS:  return CommandSettingsDialog::ChecksumType::CRC16_MODBUS;
+        case ::ChecksumType::CRC16_CCITT:   return CommandSettingsDialog::ChecksumType::CRC16_CCITT;
+        case ::ChecksumType::CRC32:         return CommandSettingsDialog::ChecksumType::CRC32;
         default: return CommandSettingsDialog::ChecksumType::None;
+    }
+}
+
+// ========== ChecksumScope转换 ==========
+
+::ChecksumScope ProtocolTypeConverter::uiToProtocolChecksumScope(CommandSettingsDialog::ChecksumScope uiScope)
+{
+    switch (uiScope) {
+        case CommandSettingsDialog::ChecksumScope::FullFrame:    return ::ChecksumScope::FullFrame;
+        case CommandSettingsDialog::ChecksumScope::AfterHeader:  return ::ChecksumScope::AfterHeader;
+        case CommandSettingsDialog::ChecksumScope::DataOnly:     return ::ChecksumScope::DataOnly;
+        case CommandSettingsDialog::ChecksumScope::Custom:       return ::ChecksumScope::Custom;
+        default: return ::ChecksumScope::AfterHeader;
+    }
+}
+
+CommandSettingsDialog::ChecksumScope ProtocolTypeConverter::protocolToUiChecksumScope(::ChecksumScope protocolScope)
+{
+    switch (protocolScope) {
+        case ::ChecksumScope::FullFrame:    return CommandSettingsDialog::ChecksumScope::FullFrame;
+        case ::ChecksumScope::AfterHeader:  return CommandSettingsDialog::ChecksumScope::AfterHeader;
+        case ::ChecksumScope::DataOnly:     return CommandSettingsDialog::ChecksumScope::DataOnly;
+        case ::ChecksumScope::Custom:       return CommandSettingsDialog::ChecksumScope::Custom;
+        default: return CommandSettingsDialog::ChecksumScope::AfterHeader;
     }
 }
 
@@ -144,10 +170,12 @@ CommandSettingsDialog::FieldConfig ProtocolTypeConverter::protocolToUiFieldConfi
     protocolConfig.frameFooter = QByteArray::fromHex(footerHex.toLatin1());
     protocolConfig.lengthPosition = uiConfig.lengthPosition;
     protocolConfig.checksumType = uiToProtocolChecksumType(uiConfig.checksumType);
+    protocolConfig.checksumScope = uiToProtocolChecksumScope(uiConfig.checksumScope);
     protocolConfig.checksumStart = uiConfig.checksumStart;
     protocolConfig.checksumLength = uiConfig.checksumLength;
     protocolConfig.checksumPosition = uiConfig.checksumPosition;
     protocolConfig.byteOrder = uiToProtocolByteOrder(uiConfig.byteOrder);
+    protocolConfig.checksumByteOrder = uiToProtocolByteOrder(uiConfig.checksumByteOrder);
     protocolConfig.frequency = uiConfig.frequency;
     protocolConfig.separator = uiConfig.separator;
 
@@ -174,10 +202,12 @@ CommandSettingsDialog::ProtocolConfig ProtocolTypeConverter::protocolToUiConfig(
     uiConfig.frameFooter = QString(protocolConfig.frameFooter.toHex(' ')).toUpper();
     uiConfig.lengthPosition = protocolConfig.lengthPosition;
     uiConfig.checksumType = protocolToUiChecksumType(protocolConfig.checksumType);
+    uiConfig.checksumScope = protocolToUiChecksumScope(protocolConfig.checksumScope);
     uiConfig.checksumStart = protocolConfig.checksumStart;
     uiConfig.checksumLength = protocolConfig.checksumLength;
     uiConfig.checksumPosition = protocolConfig.checksumPosition;
     uiConfig.byteOrder = protocolToUiByteOrder(protocolConfig.byteOrder);
+    uiConfig.checksumByteOrder = protocolToUiByteOrder(protocolConfig.checksumByteOrder);
     uiConfig.frequency = protocolConfig.frequency;
     uiConfig.separator = protocolConfig.separator;
 

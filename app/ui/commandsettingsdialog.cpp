@@ -1,6 +1,7 @@
 #include "commandsettingsdialog.h"
 #include "protocoltypeconverter.h"
 #include "protocoltestdialog.h"
+#include "newprotocoldialog.h"
 #include "protocol/protocolmanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -60,9 +61,9 @@ void CommandSettingsDialog::setupUI()
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(10, 10, 10, 10);
 
-    // 设置协议标签页
-    setupProtocolTabs();
-    mainLayout->addWidget(m_tabWidget);
+    // 设置协议标签页（包含新建/删除按钮）
+    QWidget *tabContainer = setupProtocolTabs();
+    mainLayout->addWidget(tabContainer);
 
     // 创建内容区域的分割器
     QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
@@ -85,7 +86,7 @@ void CommandSettingsDialog::setupUI()
     mainLayout->addWidget(m_importProtocolBtn->parentWidget());
 }
 
-void CommandSettingsDialog::setupProtocolTabs()
+QWidget* CommandSettingsDialog::setupProtocolTabs()
 {
     // 顶部协议标签页容器
     QWidget *tabContainer = new QWidget(this);
@@ -106,6 +107,8 @@ void CommandSettingsDialog::setupProtocolTabs()
     tabLayout->addWidget(m_tabWidget, 1);
     tabLayout->addWidget(m_newProtocolBtn);
     tabLayout->addWidget(m_deleteProtocolBtn);
+
+    return tabContainer;
 }
 
 void CommandSettingsDialog::setupFrameFormatGroup()
@@ -353,30 +356,37 @@ void CommandSettingsDialog::setupConnections()
 
 void CommandSettingsDialog::onNewProtocol()
 {
-    bool ok;
-    QString name = QInputDialog::getText(this, "新建协议",
-                                         "请输入协议名称:",
-                                         QLineEdit::Normal,
-                                         "New_Protocol", &ok);
-    if (ok && !name.isEmpty()) {
+    // 使用新建协议向导对话框
+    NewProtocolDialog dialog(this);
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = dialog.getProtocolName();
+
+        // 检查协议名称是否已存在
         if (m_protocols.contains(name)) {
-            QMessageBox::warning(this, "警告", "协议名称已存在！");
+            QMessageBox::warning(this, "警告",
+                QString("协议名称 \"%1\" 已存在！\n请使用其他名称。").arg(name));
             return;
         }
 
-        // 创建新协议
-        ProtocolConfig config;
-        config.name = name;
-        config.version = "1.0.0";
-        config.description = "新建协议";
+        // 获取新建的协议配置
+        ProtocolConfig config = dialog.getProtocolConfig();
 
+        // 保存到协议列表
         m_protocols[name] = config;
         m_currentProtocolName = name;
 
-        // 添加标签页
+        // 更新标签页并显示
         updateProtocolTabs();
 
-        QMessageBox::information(this, "成功", "协议创建成功！");
+        // 显示成功提示
+        int fieldCount = config.fields.size();
+        QString message = QString("协议 \"%1\" 创建成功！").arg(name);
+        if (fieldCount > 0) {
+            message += QString("\n已自动添加 %1 个数据字段。").arg(fieldCount);
+        }
+        QMessageBox::information(this, "成功", message);
+
+        m_isModified = true;
     }
 }
 
@@ -1069,7 +1079,8 @@ QString CommandSettingsDialog::checksumTypeToString(ChecksumType type) const
         case ChecksumType::Sum: return "Sum";
         case ChecksumType::XOR: return "XOR";
         case ChecksumType::CRC8: return "CRC8";
-        case ChecksumType::CRC16: return "CRC16";
+        case ChecksumType::CRC16_MODBUS: return "CRC16-MODBUS";
+        case ChecksumType::CRC16_CCITT: return "CRC16-CCITT";
         case ChecksumType::CRC32: return "CRC32";
         default: return "无校验";
     }
@@ -1080,7 +1091,9 @@ CommandSettingsDialog::ChecksumType CommandSettingsDialog::stringToChecksumType(
     if (str == "Sum") return ChecksumType::Sum;
     if (str == "XOR") return ChecksumType::XOR;
     if (str == "CRC8") return ChecksumType::CRC8;
-    if (str == "CRC16") return ChecksumType::CRC16;
+    if (str == "CRC16-MODBUS") return ChecksumType::CRC16_MODBUS;
+    if (str == "CRC16-CCITT") return ChecksumType::CRC16_CCITT;
+    if (str == "CRC16") return ChecksumType::CRC16_MODBUS;  // 向后兼容：旧配置的"CRC16"映射为MODBUS
     if (str == "CRC32") return ChecksumType::CRC32;
     return ChecksumType::None;
 }

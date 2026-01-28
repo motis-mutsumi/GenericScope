@@ -68,12 +68,23 @@ public:
      * @brief 校验方式枚举
      */
     enum class ChecksumType {
-        None,    // 无校验
-        Sum,     // 累加和
-        XOR,     // 异或
-        CRC8,    // CRC8
-        CRC16,   // CRC16（MODBUS）
-        CRC32    // CRC32（IEEE 802.3）
+        None,           // 无校验
+        Sum,            // 累加和
+        XOR,            // 异或
+        CRC8,           // CRC8
+        CRC16_MODBUS,   // CRC16-MODBUS（多项式0xA001，初值0xFFFF）
+        CRC16_CCITT,    // CRC16-CCITT（多项式0x1021，初值0xFFFF）
+        CRC32           // CRC32（IEEE 802.3标准）
+    };
+
+    /**
+     * @brief 校验范围枚举
+     */
+    enum class ChecksumScope {
+        FullFrame,      // 从帧起始（包含帧头）
+        AfterHeader,    // 从帧头后（不包含帧头）
+        DataOnly,       // 仅数据部分（自动排除帧头和长度字段）
+        Custom          // 自定义（使用checksumStart字段）
     };
 
     /**
@@ -112,10 +123,12 @@ public:
         QString frameFooter;     // 帧尾（16进制字符串）
         int lengthPosition;      // 长度字段位置（-1表示无长度字段）
         ChecksumType checksumType;  // 校验方式
-        int checksumStart;       // 校验起始位置
+        ChecksumScope checksumScope; // 校验范围（推荐使用）
+        int checksumStart;       // 校验起始位置（当checksumScope=Custom时使用）
         int checksumLength;      // 校验字节数（-1表示到帧尾）
         int checksumPosition;    // 校验码位置（-1表示帧尾前）
-        ByteOrder byteOrder;     // 字节序
+        ByteOrder byteOrder;     // 数据字段字节序
+        ByteOrder checksumByteOrder; // 校验码字节序（独立于数据字节序）
         int frequency;           // 数据频率（Hz）
         QString separator;       // 分隔符（文本协议）
 
@@ -123,8 +136,11 @@ public:
         QVector<FieldConfig> fields;
 
         ProtocolConfig() : lengthPosition(-1), checksumType(ChecksumType::None),
+                           checksumScope(ChecksumScope::AfterHeader),
                            checksumStart(0), checksumLength(-1), checksumPosition(-1),
-                           byteOrder(ByteOrder::LittleEndian), frequency(1000) {}
+                           byteOrder(ByteOrder::LittleEndian),
+                           checksumByteOrder(ByteOrder::LittleEndian),
+                           frequency(1000) {}
     };
 
     explicit CommandSettingsDialog(QWidget *parent = nullptr);
@@ -169,7 +185,7 @@ private slots:
 
 private:
     void setupUI();
-    void setupProtocolTabs();
+    QWidget* setupProtocolTabs();
     void setupFrameFormatGroup();
     void setupFieldConfigGroup();
     void setupButtons();

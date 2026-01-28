@@ -33,15 +33,24 @@ public:
     ByteOrder byteOrder() const { return m_byteOrder; }
 
     // ========== 基础类型转换 ==========
+    // 所有数值类型转换支持缩放因子和偏移量：result = rawValue * scale + offset
 
-    QVariant convertInt8(const QByteArray &data, int offset) const;
-    QVariant convertUInt8(const QByteArray &data, int offset) const;
-    QVariant convertInt16(const QByteArray &data, int offset) const;
-    QVariant convertUInt16(const QByteArray &data, int offset) const;
-    QVariant convertInt32(const QByteArray &data, int offset) const;
-    QVariant convertUInt32(const QByteArray &data, int offset) const;
-    QVariant convertFloat(const QByteArray &data, int offset) const;
-    QVariant convertDouble(const QByteArray &data, int offset) const;
+    QVariant convertInt8(const QByteArray &data, int offset,
+                         double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertUInt8(const QByteArray &data, int offset,
+                          double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertInt16(const QByteArray &data, int offset,
+                          double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertUInt16(const QByteArray &data, int offset,
+                           double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertInt32(const QByteArray &data, int offset,
+                          double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertUInt32(const QByteArray &data, int offset,
+                           double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertFloat(const QByteArray &data, int offset,
+                          double scale = 1.0, double offset_value = 0.0) const;
+    QVariant convertDouble(const QByteArray &data, int offset,
+                           double scale = 1.0, double offset_value = 0.0) const;
 
     // ========== 特殊类型转换 ==========
 

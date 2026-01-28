@@ -11,7 +11,8 @@
  * - Sum（累加和）
  * - XOR（异或）
  * - CRC8
- * - CRC16（MODBUS标准）
+ * - CRC16-MODBUS（多项式0xA001，初值0xFFFF）
+ * - CRC16-CCITT（多项式0x1021，初值0xFFFF）
  * - CRC32（IEEE 802.3标准）
  */
 class ChecksumCalculator
@@ -45,13 +46,22 @@ public:
     static quint8 calculateCRC8(const QByteArray &data, int start, int length);
 
     /**
-     * @brief 计算CRC16校验（MODBUS标准）
+     * @brief 计算CRC16-MODBUS校验
      * @param data 数据
      * @param start 起始位置
      * @param length 长度
-     * @return 校验码（16位）
+     * @return 校验码（16位，多项式0xA001，初值0xFFFF）
      */
-    static quint16 calculateCRC16(const QByteArray &data, int start, int length);
+    static quint16 calculateCRC16_MODBUS(const QByteArray &data, int start, int length);
+
+    /**
+     * @brief 计算CRC16-CCITT校验
+     * @param data 数据
+     * @param start 起始位置
+     * @param length 长度
+     * @return 校验码（16位，多项式0x1021，初值0xFFFF）
+     */
+    static quint16 calculateCRC16_CCITT(const QByteArray &data, int start, int length);
 
     /**
      * @brief 计算CRC32校验（IEEE 802.3标准）

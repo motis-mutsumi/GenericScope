@@ -1,4 +1,5 @@
 #include "protocoltestdialog.h"
+#include "protocoltypeconverter.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -12,6 +13,12 @@ ProtocolTestDialog::ProtocolTestDialog(const CommandSettingsDialog::ProtocolConf
     : QDialog(parent)
     , m_config(config)
 {
+    // 将 UI 配置转换为 protocol 模块配置
+    ::ProtocolConfig protocolConfig = ProtocolTypeConverter::uiToProtocolConfig(config);
+
+    // 创建协议解析器
+    m_parser = QSharedPointer<ProtocolParser>::create(protocolConfig);
+
     setupUI();
     setupConnections();
 }
@@ -124,77 +131,26 @@ void ProtocolTestDialog::onParseData()
     m_statusLabel->setText(QString("正在解析 %1 字节数据...").arg(data.size()));
     m_statusLabel->setStyleSheet("QLabel { color: blue; font-weight: bold; }");
 
-    // 模拟解析过程（实际应该调用ProtocolParser）
-    // 这里简化实现，直接按字段配置解析
-    bool parseSuccess = true;
-    QString errorMsg;
-    QMap<QString, QVariant> fieldValues;
+    // 使用 ProtocolParser 解析数据
+    ParseResult result = m_parser->parse(data);
 
-    // 1. 验证帧头
-    if (!m_config.frameHeader.isEmpty()) {
-        QByteArray headerBytes = QByteArray::fromHex(m_config.frameHeader.toLatin1());
-        if (data.size() < headerBytes.size() ||
-            !data.startsWith(headerBytes)) {
-            parseSuccess = false;
-            errorMsg = "帧头不匹配！";
-        }
+    // 显示原始数据（包括校验信息）
+    m_rawDataLabel->setText("原始数据：" + byteArrayToHexString(data));
+
+    // 显示校验码验证结果
+    if (m_config.checksumType == CommandSettingsDialog::ChecksumType::None) {
+        m_checksumLabel->setText("校验码：无校验");
+        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #e0e0e0; }");
+    } else if (result.success) {
+        m_checksumLabel->setText("校验码：验证通过 ✓");
+        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ccffcc; }");
+    } else if (result.errorMsg.contains("Checksum")) {
+        m_checksumLabel->setText("校验码：验证失败 ✗");
+        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ffcccc; }");
     }
 
-    // 2. 验证帧尾
-    if (parseSuccess && !m_config.frameFooter.isEmpty()) {
-        QByteArray footerBytes = QByteArray::fromHex(m_config.frameFooter.toLatin1());
-        if (data.size() < footerBytes.size() ||
-            !data.endsWith(footerBytes)) {
-            parseSuccess = false;
-            errorMsg = "帧尾不匹配！";
-        }
-    }
-
-    // 3. 解析字段（简化版本）
-    if (parseSuccess) {
-        int headerSize = m_config.frameHeader.isEmpty() ? 0 :
-                        QByteArray::fromHex(m_config.frameHeader.toLatin1()).size();
-
-        for (const auto &field : m_config.fields) {
-            int offset = headerSize + field.elementHead;
-
-            if (offset + field.byteLength > data.size()) {
-                parseSuccess = false;
-                errorMsg = QString("字段 %1：数据不足！").arg(field.name);
-                break;
-            }
-
-            // 简化的数据类型转换
-            QVariant value;
-            if (field.type == CommandSettingsDialog::DataType::Int16) {
-                if (field.byteLength == 2) {
-                    qint16 rawValue;
-                    if (m_config.byteOrder == CommandSettingsDialog::ByteOrder::LittleEndian) {
-                        rawValue = static_cast<qint16>(
-                            (static_cast<quint8>(data[offset + 0]) << 0) |
-                            (static_cast<quint8>(data[offset + 1]) << 8));
-                    } else {
-                        rawValue = static_cast<qint16>(
-                            (static_cast<quint8>(data[offset + 0]) << 8) |
-                            (static_cast<quint8>(data[offset + 1]) << 0));
-                    }
-                    value = QVariant(rawValue * field.scale + field.offset);
-                }
-            } else if (field.type == CommandSettingsDialog::DataType::UInt8) {
-                value = QVariant(static_cast<quint8>(data[offset]));
-            } else if (field.type == CommandSettingsDialog::DataType::Int8) {
-                value = QVariant(static_cast<qint8>(data[offset]));
-            } else {
-                // 其他类型暂时显示原始字节
-                value = QVariant(QString("0x%1").arg(static_cast<quint8>(data[offset]), 2, 16, QChar('0')));
-            }
-
-            fieldValues[field.name] = value;
-        }
-    }
-
-    // 显示结果
-    displayParseResult(parseSuccess, errorMsg, fieldValues);
+    // 显示解析结果
+    displayParseResult(result.success, result.errorMsg, result.fieldValues);
 }
 
 void ProtocolTestDialog::onClearData()
@@ -242,27 +198,11 @@ void ProtocolTestDialog::displayParseResult(bool success, const QString &errorMs
     if (!success) {
         m_statusLabel->setText("解析失败：" + errorMsg);
         m_statusLabel->setStyleSheet("QLabel { color: red; font-weight: bold; }");
-        m_checksumLabel->setText("校验码：解析失败");
-        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ffcccc; }");
         return;
     }
 
-    m_statusLabel->setText("解析成功！");
+    m_statusLabel->setText(QString("解析成功！共解析 %1 个字段").arg(fieldValues.size()));
     m_statusLabel->setStyleSheet("QLabel { color: green; font-weight: bold; }");
-
-    // 显示校验码验证结果（简化版本）
-    if (m_config.checksumType == CommandSettingsDialog::ChecksumType::None) {
-        m_checksumLabel->setText("校验码：无校验");
-        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #e0e0e0; }");
-    } else {
-        m_checksumLabel->setText("校验码：验证通过 ✓");
-        m_checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ccffcc; }");
-    }
-
-    // 显示原始数据
-    QString hexStr = m_inputEdit->toPlainText().trimmed();
-    QByteArray data = hexStringToByteArray(hexStr);
-    m_rawDataLabel->setText("原始数据：" + byteArrayToHexString(data));
 
     // 填充结果表格
     m_resultTable->setRowCount(fieldValues.size());
@@ -286,7 +226,25 @@ void ProtocolTestDialog::displayParseResult(bool success, const QString &errorMs
             }
             m_resultTable->setItem(row, 1, new QTableWidgetItem(typeStr));
 
-            m_resultTable->setItem(row, 2, new QTableWidgetItem(fieldValues[field.name].toString()));
+            // 格式化显示数值
+            QString valueStr;
+            QVariant value = fieldValues[field.name];
+            if (field.type == CommandSettingsDialog::DataType::Float ||
+                field.type == CommandSettingsDialog::DataType::Double ||
+                field.type == CommandSettingsDialog::DataType::MByte) {
+                // 浮点数类型，保留6位小数
+                bool ok;
+                double dValue = value.toDouble(&ok);
+                if (ok) {
+                    valueStr = QString::number(dValue, 'f', 6);
+                } else {
+                    valueStr = value.toString();
+                }
+            } else {
+                valueStr = value.toString();
+            }
+
+            m_resultTable->setItem(row, 2, new QTableWidgetItem(valueStr));
             m_resultTable->setItem(row, 3, new QTableWidgetItem(field.unit));
             row++;
         }

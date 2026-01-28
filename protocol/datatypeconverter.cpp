@@ -11,109 +11,122 @@ DataTypeConverter::DataTypeConverter(ByteOrder byteOrder)
 // 基础类型转换 - 8位
 // ============================================================================
 
-QVariant DataTypeConverter::convertInt8(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertInt8(const QByteArray &data, int offset,
+                                         double scale, double offset_value) const
 {
     if (offset < 0 || offset + 1 > data.size()) {
         return QVariant();
     }
 
-    qint8 value = static_cast<qint8>(data[offset]);
-    return QVariant(value);
+    qint8 rawValue = static_cast<qint8>(data[offset]);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
-QVariant DataTypeConverter::convertUInt8(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertUInt8(const QByteArray &data, int offset,
+                                          double scale, double offset_value) const
 {
     if (offset < 0 || offset + 1 > data.size()) {
         return QVariant();
     }
 
-    quint8 value = static_cast<quint8>(data[offset]);
-    return QVariant(value);
+    quint8 rawValue = static_cast<quint8>(data[offset]);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
 // ============================================================================
 // 基础类型转换 - 16位
 // ============================================================================
 
-QVariant DataTypeConverter::convertInt16(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertInt16(const QByteArray &data, int offset,
+                                          double scale, double offset_value) const
 {
     if (offset < 0 || offset + 2 > data.size()) {
         return QVariant();
     }
 
-    qint16 value;
+    qint16 rawValue;
 
     if (m_byteOrder == ByteOrder::LittleEndian) {
         // 小端序：低字节在前
-        value = qFromLittleEndian<qint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromLittleEndian<qint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
     } else {
         // 大端序：高字节在前
-        value = qFromBigEndian<qint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromBigEndian<qint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
     }
 
-    return QVariant(value);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
-QVariant DataTypeConverter::convertUInt16(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertUInt16(const QByteArray &data, int offset,
+                                           double scale, double offset_value) const
 {
     if (offset < 0 || offset + 2 > data.size()) {
         return QVariant();
     }
 
-    quint16 value;
+    quint16 rawValue;
 
     if (m_byteOrder == ByteOrder::LittleEndian) {
-        value = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
     } else {
-        value = qFromBigEndian<quint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromBigEndian<quint16>(reinterpret_cast<const uchar*>(data.constData() + offset));
     }
 
-    return QVariant(value);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
 // ============================================================================
 // 基础类型转换 - 32位
 // ============================================================================
 
-QVariant DataTypeConverter::convertInt32(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertInt32(const QByteArray &data, int offset,
+                                          double scale, double offset_value) const
 {
     if (offset < 0 || offset + 4 > data.size()) {
         return QVariant();
     }
 
-    qint32 value;
+    qint32 rawValue;
 
     if (m_byteOrder == ByteOrder::LittleEndian) {
-        value = qFromLittleEndian<qint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromLittleEndian<qint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
     } else {
-        value = qFromBigEndian<qint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromBigEndian<qint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
     }
 
-    return QVariant(value);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
-QVariant DataTypeConverter::convertUInt32(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertUInt32(const QByteArray &data, int offset,
+                                           double scale, double offset_value) const
 {
     if (offset < 0 || offset + 4 > data.size()) {
         return QVariant();
     }
 
-    quint32 value;
+    quint32 rawValue;
 
     if (m_byteOrder == ByteOrder::LittleEndian) {
-        value = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromLittleEndian<quint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
     } else {
-        value = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
+        rawValue = qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(data.constData() + offset));
     }
 
-    return QVariant(value);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
 // ============================================================================
 // 浮点类型转换
 // ============================================================================
 
-QVariant DataTypeConverter::convertFloat(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertFloat(const QByteArray &data, int offset,
+                                          double scale, double offset_value) const
 {
     if (offset < 0 || offset + 4 > data.size()) {
         return QVariant();
@@ -129,13 +142,15 @@ QVariant DataTypeConverter::convertFloat(const QByteArray &data, int offset) con
     }
 
     // 使用memcpy进行类型转换（避免strict aliasing问题）
-    float floatValue;
-    std::memcpy(&floatValue, &intValue, sizeof(float));
+    float rawValue;
+    std::memcpy(&rawValue, &intValue, sizeof(float));
 
-    return QVariant(floatValue);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
-QVariant DataTypeConverter::convertDouble(const QByteArray &data, int offset) const
+QVariant DataTypeConverter::convertDouble(const QByteArray &data, int offset,
+                                           double scale, double offset_value) const
 {
     if (offset < 0 || offset + 8 > data.size()) {
         return QVariant();
@@ -151,10 +166,11 @@ QVariant DataTypeConverter::convertDouble(const QByteArray &data, int offset) co
     }
 
     // 使用memcpy进行类型转换
-    double doubleValue;
-    std::memcpy(&doubleValue, &intValue, sizeof(double));
+    double rawValue;
+    std::memcpy(&rawValue, &intValue, sizeof(double));
 
-    return QVariant(doubleValue);
+    double result = rawValue * scale + offset_value;
+    return QVariant(result);
 }
 
 // ============================================================================
@@ -184,11 +200,13 @@ QVariant DataTypeConverter::convertMByte(const QByteArray &data, int offset,
     }
 
     // 处理符号位（如果是有符号数）
+    // 注意：当length=8时，左移64位是UB，需要特殊处理
     int bitCount = length * 8;
-    if (rawValue & (1LL << (bitCount - 1))) {
-        // 负数：符号扩展
+    if (length < 8 && (rawValue & (1LL << (bitCount - 1)))) {
+        // 负数：符号扩展（仅在小于8字节时需要）
         rawValue |= (~0LL << bitCount);
     }
+    // length=8时，qint64已经是完整的64位有符号数，无需符号扩展
 
     // 应用缩放因子和偏移量
     double result = rawValue * scale + offset_value;
@@ -224,28 +242,28 @@ QVariant DataTypeConverter::convert(const QByteArray &data, const FieldConfig &f
 {
     switch (field.type) {
         case DataType::Int8:
-            return convertInt8(data, field.elementHead);
+            return convertInt8(data, field.elementHead, field.scale, field.offset);
 
         case DataType::UInt8:
-            return convertUInt8(data, field.elementHead);
+            return convertUInt8(data, field.elementHead, field.scale, field.offset);
 
         case DataType::Int16:
-            return convertInt16(data, field.elementHead);
+            return convertInt16(data, field.elementHead, field.scale, field.offset);
 
         case DataType::UInt16:
-            return convertUInt16(data, field.elementHead);
+            return convertUInt16(data, field.elementHead, field.scale, field.offset);
 
         case DataType::Int32:
-            return convertInt32(data, field.elementHead);
+            return convertInt32(data, field.elementHead, field.scale, field.offset);
 
         case DataType::UInt32:
-            return convertUInt32(data, field.elementHead);
+            return convertUInt32(data, field.elementHead, field.scale, field.offset);
 
         case DataType::Float:
-            return convertFloat(data, field.elementHead);
+            return convertFloat(data, field.elementHead, field.scale, field.offset);
 
         case DataType::Double:
-            return convertDouble(data, field.elementHead);
+            return convertDouble(data, field.elementHead, field.scale, field.offset);
 
         case DataType::MByte:
             return convertMByte(data, field.elementHead, field.byteLength,

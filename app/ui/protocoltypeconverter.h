@@ -27,6 +27,10 @@ public:
     static ::ChecksumType uiToProtocolChecksumType(CommandSettingsDialog::ChecksumType uiType);
     static CommandSettingsDialog::ChecksumType protocolToUiChecksumType(::ChecksumType protocolType);
 
+    // ChecksumScope转换
+    static ::ChecksumScope uiToProtocolChecksumScope(CommandSettingsDialog::ChecksumScope uiScope);
+    static CommandSettingsDialog::ChecksumScope protocolToUiChecksumScope(::ChecksumScope protocolScope);
+
     // ========== 结构体转换 ==========
 
     // FieldConfig转换

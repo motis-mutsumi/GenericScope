@@ -64,25 +64,52 @@ quint8 ChecksumCalculator::calculateCRC8(const QByteArray &data, int start, int 
 }
 
 // ============================================================================
-// CRC16校验（MODBUS标准）
+// CRC16-MODBUS校验
 // ============================================================================
 
-quint16 ChecksumCalculator::calculateCRC16(const QByteArray &data, int start, int length)
+quint16 ChecksumCalculator::calculateCRC16_MODBUS(const QByteArray &data, int start, int length)
 {
     if (start < 0 || start + length > data.size()) {
         return 0;
     }
 
-    quint16 crc = 0xFFFF;
+    quint16 crc = 0xFFFF;  // MODBUS初值
 
     for (int i = 0; i < length; ++i) {
         crc ^= static_cast<quint8>(data[start + i]);
 
         for (int j = 0; j < 8; ++j) {
             if (crc & 0x0001) {
-                crc = (crc >> 1) ^ 0xA001;
+                crc = (crc >> 1) ^ 0xA001;  // MODBUS多项式（反向）
             } else {
                 crc >>= 1;
+            }
+        }
+    }
+
+    return crc;
+}
+
+// ============================================================================
+// CRC16-CCITT校验
+// ============================================================================
+
+quint16 ChecksumCalculator::calculateCRC16_CCITT(const QByteArray &data, int start, int length)
+{
+    if (start < 0 || start + length > data.size()) {
+        return 0;
+    }
+
+    quint16 crc = 0xFFFF;  // CCITT初值
+
+    for (int i = 0; i < length; ++i) {
+        crc ^= static_cast<quint16>(static_cast<quint8>(data[start + i])) << 8;
+
+        for (int j = 0; j < 8; ++j) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021;  // CCITT多项式
+            } else {
+                crc <<= 1;
             }
         }
     }

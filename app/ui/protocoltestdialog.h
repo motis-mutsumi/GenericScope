@@ -7,7 +7,9 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QLabel>
+#include <QSharedPointer>
 #include "commandsettingsdialog.h"
+#include "protocol/protocolparser.h"
 
 /**
  * @brief 协议测试对话框
@@ -41,6 +43,7 @@ private:
 
 private:
     CommandSettingsDialog::ProtocolConfig m_config;
+    QSharedPointer<ProtocolParser> m_parser;  // 协议解析器
 
     // UI组件
     QTextEdit *m_inputEdit;          // 输入16进制数据

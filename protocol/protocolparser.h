@@ -89,8 +89,15 @@ public:
     void setConfig(const ProtocolConfig &config);
 
 private:
+    /**
+     * @brief 获取校验码字节长度
+     * @return 校验码长度（1/2/4字节，0表示无校验）
+     */
+    int getChecksumSize() const;
+
     ProtocolConfig m_config;
-    DataTypeConverter m_converter;
+    DataTypeConverter m_converter;           // 数据字段转换器
+    DataTypeConverter m_checksumConverter;   // 校验码转换器（独立字节序）
 };
 
 #endif // PROTOCOLPARSER_H

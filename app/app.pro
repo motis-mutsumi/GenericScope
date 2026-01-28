@@ -10,8 +10,11 @@ LIBS += -lalgorithm -lutil -lprotocol -ltransfer -lplot -llog -lrecord -lcore_pl
 HEADERS += \
     ui/mainwindow.h \
     ui/commandsettingsdialog.h \
+    ui/newprotocoldialog.h \
     ui/protocoltypeconverter.h \
     ui/protocoltestdialog.h \
+    ui/protocolaigenerator.h \
+    ui/aiprotocolinputdialog.h \
     config/config.h \
     device/devicemanager.h
 
@@ -19,8 +22,11 @@ SOURCES += \
     main.cpp \
     ui/mainwindow.cpp \
     ui/commandsettingsdialog.cpp \
+    ui/newprotocoldialog.cpp \
     ui/protocoltypeconverter.cpp \
     ui/protocoltestdialog.cpp \
+    ui/protocolaigenerator.cpp \
+    ui/aiprotocolinputdialog.cpp \
     config/config.cpp \
     device/devicemanager.cpp
 

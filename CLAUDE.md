@@ -204,9 +204,10 @@ acq->startAcquisition();
 3. **ChecksumCalculator**（`protocol/checksumcalculator.h/cpp`）
    - Sum（累加和）
    - XOR（异或）
-   - CRC8
-   - CRC16（MODBUS标准）
-   - CRC32（IEEE 802.3标准）
+   - CRC8（多项式0x07）
+   - CRC16-MODBUS（多项式0xA001，初值0xFFFF）
+   - CRC16-CCITT（多项式0x1021，初值0xFFFF）
+   - CRC32（IEEE 802.3标准，查找表优化）
 
 4. **DataTypeConverter**（`protocol/datatypeconverter.h/cpp`）
    - 支持10种数据类型：int8/uint8/int16/uint16/int32/uint32/float/double/mbyte/string
@@ -234,10 +235,12 @@ struct ProtocolConfig {
     QString frameFooter;     // 帧尾（16进制字符串）
     int lengthPosition;      // 长度字段位置
     ChecksumType checksumType;  // 校验方式
-    int checksumStart;       // 校验起始位置
-    int checksumLength;      // 校验字节数
-    int checksumPosition;    // 校验码位置
-    ByteOrder byteOrder;     // 字节序
+    ChecksumScope checksumScope; // 校验范围（推荐使用，自动计算checksumStart）
+    int checksumStart;       // 校验起始位置（当checksumScope=Custom时使用）
+    int checksumLength;      // 校验字节数（-1表示到帧尾）
+    int checksumPosition;    // 校验码位置（-1表示帧尾前）
+    ByteOrder byteOrder;     // 数据字段字节序
+    ByteOrder checksumByteOrder; // 校验码字节序（独立于数据字节序）
     int frequency;           // 数据频率（Hz）
     QString separator;       // 分隔符（文本协议）
 
@@ -300,6 +303,58 @@ if (result.success) {
     qDebug() << "Roll:" << roll;
 }
 ```
+
+**CRC配置指南（2026-01-27新增）：**
+
+系统支持灵活的CRC配置，包括以下重要特性：
+
+1. **多种CRC算法**：
+   - `CRC16_MODBUS`：MODBUS协议标准，多项式0xA001，初值0xFFFF
+   - `CRC16_CCITT`：通信协议常用，多项式0x1021，初值0xFFFF
+   - `CRC8`：轻量级校验，多项式0x07
+   - `CRC32`：高强度校验，IEEE 802.3标准
+
+2. **校验范围（ChecksumScope）**：
+   - `FullFrame`：从帧起始（包含帧头）- checksumStart = 0
+   - `AfterHeader`：从帧头后（不包含帧头）- 最常见场景
+   - `DataOnly`：仅数据部分（自动排除帧头和长度字段）
+   - `Custom`：自定义（手动设置checksumStart）
+
+3. **独立校验码字节序**：
+   - `byteOrder`：数据字段字节序
+   - `checksumByteOrder`：校验码字节序（可与数据字段不同）
+   - 解决MODBUS等协议中数据与校验码字节序不一致的问题
+
+**常见协议配置示例：**
+
+```cpp
+// MODBUS RTU协议
+ProtocolConfig modbusConfig;
+modbusConfig.checksumType = ChecksumType::CRC16_MODBUS;
+modbusConfig.checksumScope = ChecksumScope::FullFrame;  // 校验整个帧（包含地址、功能码）
+modbusConfig.byteOrder = ByteOrder::BigEndian;          // 数据大端序
+modbusConfig.checksumByteOrder = ByteOrder::LittleEndian; // CRC小端序
+
+// 自定义IMU协议
+ProtocolConfig imuConfig;
+imuConfig.frameHeader = QByteArray::fromHex("FFAA");
+imuConfig.frameFooter = QByteArray::fromHex("0D0A");
+imuConfig.checksumType = ChecksumType::CRC16_CCITT;
+imuConfig.checksumScope = ChecksumScope::AfterHeader;  // 从帧头后开始校验
+imuConfig.byteOrder = ByteOrder::LittleEndian;
+imuConfig.checksumByteOrder = ByteOrder::LittleEndian; // 校验码与数据字节序相同
+```
+
+**边界检查和错误处理：**
+
+ProtocolParser现已增强边界检查，自动验证：
+- 帧头位置有效性
+- 长度字段位置有效性
+- 校验起始位置有效性
+- 字段读取位置有效性
+- 帧长度合理性
+
+所有错误会通过qWarning/qDebug输出详细日志，便于调试。
 
 **与CommandSettingsDialog集成：**
 
@@ -1184,6 +1239,116 @@ docs/
 - 集成指南：`docs/scopeuart-integration-guide.md`
 - 协议配置：`app/ui/commandsettingsdialog.h/cpp`
 - 类型转换：`app/ui/protocoltypeconverter.h/cpp`
+
+#### 2026-01-27: Protocol模块CRC配置全面优化
+
+针对CRC校验配置进行了全面分析和改进，解决了多个设计缺陷，提升了配置的灵活性和易用性。
+
+**✅ 主要改进：**
+
+1. **增加CRC16-CCITT算法支持**（高优先级）
+   - 新增`ChecksumType::CRC16_CCITT`（多项式0x1021，初值0xFFFF）
+   - 重命名`CRC16`为`CRC16_MODBUS`以明确算法类型
+   - 支持向后兼容：旧的"CRC16"自动映射为"CRC16_MODBUS"
+   - 在`ChecksumCalculator`中实现完整的CRC16-CCITT算法
+
+2. **增加校验码独立字节序配置**（高优先级）
+   - 新增`checksumByteOrder`字段，独立于数据字段字节序
+   - 解决MODBUS等协议中数据与校验码字节序不一致的问题
+   - 在`ProtocolParser`中使用独立的`m_checksumConverter`
+   - 默认与数据字节序相同，保持向后兼容
+
+3. **增加ChecksumScope枚举**（中优先级）
+   - `FullFrame`：从帧起始（包含帧头）
+   - `AfterHeader`：从帧头后（最常见场景，默认值）
+   - `DataOnly`：仅数据部分（自动排除帧头和长度字段）
+   - `Custom`：自定义（使用checksumStart字段）
+   - 自动计算`checksumStart`，简化用户配置
+
+4. **完善边界检查和错误处理**（高优先级）
+   - `extractFrame`：检查headerPos、lengthPos、frameLength有效性
+   - `verifyChecksum`：检查checksumStart范围
+   - `parseField`：检查字段偏移量和长度
+   - 所有错误通过qWarning/qDebug输出详细日志
+
+5. **更新UI层类型转换器**
+   - 在`CommandSettingsDialog`中同步所有枚举类型
+   - 在`ProtocolTypeConverter`中添加转换函数
+   - 支持新增的`ChecksumScope`和`checksumByteOrder`
+   - 更新协议配置序列化/反序列化
+
+6. **完善文档和注释**
+   - 在CLAUDE.md中添加CRC配置指南
+   - 提供常见协议配置示例（MODBUS RTU、自定义IMU）
+   - 说明边界检查和错误处理机制
+   - 更新协议配置结构说明
+
+**📊 技术特性：**
+
+- **向后兼容**：所有旧配置自动迁移，无需手动更新
+- **类型安全**：枚举明确区分不同CRC算法
+- **灵活配置**：支持复杂协议的特殊需求
+- **错误友好**：详细的日志输出便于调试
+- **Qt 5.14兼容**：所有代码完全兼容Qt 5.14
+
+**🔍 解决的问题：**
+
+1. ❌ **缺少CRC16-CCITT**：无法支持蓝牙、Zigbee等常见协议
+   ✅ 新增CRC16-CCITT算法，覆盖更多应用场景
+
+2. ❌ **校验码字节序绑定**：MODBUS等协议数据与CRC字节序不同时无法处理
+   ✅ 独立的checksumByteOrder配置，灵活支持各种协议
+
+3. ❌ **checksumStart含义不明**：用户需要手动计算起始位置
+   ✅ ChecksumScope枚举自动计算，简化配置
+
+4. ❌ **边界检查不足**：无效配置导致崩溃或未定义行为
+   ✅ 完善的边界检查和错误日志，提前发现问题
+
+5. ❌ **文档缺失**：配置方式不清晰
+   ✅ 完整的配置指南和示例代码
+
+**📁 修改文件清单：**
+
+```
+protocol/
+├── protocolconfig.h            # 新增checksumScope、checksumByteOrder字段
+├── protocolconfig.cpp          # 更新序列化/反序列化
+├── protocolparser.h            # 新增m_checksumConverter成员
+├── protocolparser.cpp          # 实现ChecksumScope逻辑、边界检查
+├── checksumcalculator.h        # 新增CRC16-CCITT声明
+└── checksumcalculator.cpp      # 实现CRC16-CCITT、重命名CRC16_MODBUS
+
+app/ui/
+├── commandsettingsdialog.h     # 同步protocol模块枚举
+├── protocoltypeconverter.h     # 新增ChecksumScope转换声明
+└── protocoltypeconverter.cpp   # 实现所有新增类型转换
+
+CLAUDE.md                       # 更新文档，添加CRC配置指南
+```
+
+**使用示例：**
+
+```cpp
+// MODBUS RTU协议配置
+ProtocolConfig config;
+config.checksumType = ChecksumType::CRC16_MODBUS;
+config.checksumScope = ChecksumScope::FullFrame;        // 自动设置checksumStart=0
+config.byteOrder = ByteOrder::BigEndian;                // 数据大端序
+config.checksumByteOrder = ByteOrder::LittleEndian;     // CRC小端序（MODBUS标准）
+
+// CCITT协议配置
+ProtocolConfig ccittConfig;
+ccittConfig.checksumType = ChecksumType::CRC16_CCITT;
+ccittConfig.checksumScope = ChecksumScope::AfterHeader; // 从帧头后开始校验
+ccittConfig.byteOrder = ByteOrder::BigEndian;           // 数据和CRC都是大端序
+ccittConfig.checksumByteOrder = ByteOrder::BigEndian;
+```
+
+**参考资料：**
+- CRC算法分析报告：见对话开头的详细分析
+- 改进优先级列表：高/中/低三级分类
+- 向后兼容策略：旧配置自动映射到新类型
 
 ### 编译器设置
 - 需要 C++17 标准
