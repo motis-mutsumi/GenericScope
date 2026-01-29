@@ -7,10 +7,13 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QDialogButtonBox>
+#include <QRadioButton>
+#include <QButtonGroup>
 #include "commandsettingsdialog.h"
 
 // 前向声明
 class ProtocolAIGenerator;
+class ProtocolCLIGenerator;
 
 /**
  * @brief AI协议输入对话框 - 收集数据并调用AI生成协议
@@ -36,11 +39,15 @@ public:
     // 设置API密钥
     void setApiKey(const QString &apiKey);
 
+    // 设置API Base URL
+    void setBaseUrl(const QString &baseUrl);
+
 private slots:
     void onPasteExample();
     void onClearAll();
     void onGenerate();
     void onCancel();
+    void onMethodChanged();  // 生成方式切换
 
     // AI生成器信号处理
     void onGenerationComplete(const CommandSettingsDialog::ProtocolConfig &config);
@@ -58,6 +65,10 @@ private:
     // UI组件
     QTextEdit *m_rawDataEdit;           // 原始16进制数据
     QTextEdit *m_rulesEdit;             // 解析规则描述
+    QRadioButton *m_useAPIRadio;        // 使用API方式
+    QRadioButton *m_useCLIRadio;        // 使用CLI方式
+    QButtonGroup *m_methodGroup;        // 方式选择组
+    QLabel *m_methodHintLabel;          // 方式提示标签
     QPushButton *m_pasteExampleBtn;     // 粘贴示例按钮
     QPushButton *m_clearBtn;            // 清空按钮
     QPushButton *m_generateBtn;         // 生成按钮
@@ -65,13 +76,15 @@ private:
     QLabel *m_statusLabel;              // 状态提示标签
     QProgressBar *m_progressBar;        // 进度条
 
-    // AI生成器
-    ProtocolAIGenerator *m_aiGenerator;
+    // AI生成器（两种方式）
+    ProtocolAIGenerator *m_apiGenerator;
+    ProtocolCLIGenerator *m_cliGenerator;
 
     // 数据
     CommandSettingsDialog::ProtocolConfig m_generatedConfig;
     bool m_generationSuccess;
     QString m_apiKey;
+    QString m_baseUrl;
 
     // 常量
     static const int kMinDataLength = 10;

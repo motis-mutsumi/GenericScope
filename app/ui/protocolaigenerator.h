@@ -46,6 +46,12 @@ public:
     void setApiKey(const QString &apiKey);
 
     /**
+     * @brief 设置API Base URL
+     * @param baseUrl API基础URL（从环境变量或配置文件读取，为空则使用默认值）
+     */
+    void setBaseUrl(const QString &baseUrl);
+
+    /**
      * @brief 生成协议配置
      * @param protocolName 协议名称
      * @param rawDataSample 原始16进制数据样本
@@ -103,14 +109,15 @@ private:
     QNetworkAccessManager *m_networkManager;
     QNetworkReply *m_currentReply;
     QString m_apiKey;
+    QString m_baseUrl;
     CommandSettingsDialog::ProtocolConfig m_lastConfig;
     QString m_currentProtocolName;
 
     // Claude API配置
-    static const QString kApiUrl;
+    static const QString kDefaultBaseUrl;
     static const QString kModelName;
     static const int kMaxTokens;
-    static const double kTemperature;
+    static const QString kSystemPrompt;  // 系统提示，引导AI专注于协议分析
 };
 
 #endif // PROTOCOLAIGENERATOR_H

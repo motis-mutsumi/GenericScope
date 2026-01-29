@@ -6,10 +6,13 @@
 #include <QUrlQuery>
 
 // Claude API配置
-const QString ProtocolAIGenerator::kApiUrl = "https://api.anthropic.com/v1/messages";
-const QString ProtocolAIGenerator::kModelName = "claude-3-5-sonnet-20241022";
-const int ProtocolAIGenerator::kMaxTokens = 4096;
-const double ProtocolAIGenerator::kTemperature = 0.3;
+const QString ProtocolAIGenerator::kDefaultBaseUrl = "https://api.anthropic.com";
+const QString ProtocolAIGenerator::kModelName = "claude-sonnet-4-5-20250929";  // Claude Sonnet 4.5 最新版本
+const int ProtocolAIGenerator::kMaxTokens = 32000;  // 增大token限制，支持复杂协议生成
+const QString ProtocolAIGenerator::kSystemPrompt =
+    "你是一个专业的协议解析专家，擅长分析二进制通信协议的帧结构、校验算法和数据字段。"
+    "你的任务是根据用户提供的16进制数据样本和解析规则，生成完整准确的协议配置JSON。"
+    "请严格按照指定的JSON格式输出，确保字段完整、类型正确、数值合理。";
 
 ProtocolAIGenerator::ProtocolAIGenerator(QObject *parent)
     : QObject(parent)
@@ -29,6 +32,11 @@ ProtocolAIGenerator::~ProtocolAIGenerator()
 void ProtocolAIGenerator::setApiKey(const QString &apiKey)
 {
     m_apiKey = apiKey;
+}
+
+void ProtocolAIGenerator::setBaseUrl(const QString &baseUrl)
+{
+    m_baseUrl = baseUrl;
 }
 
 void ProtocolAIGenerator::generateProtocol(const QString &protocolName,
@@ -54,8 +62,11 @@ void ProtocolAIGenerator::generateProtocol(const QString &protocolName,
     // 构建API请求
     QJsonObject requestJson = buildApiRequest(prompt);
 
-    // 创建网络请求
-    QNetworkRequest request(kApiUrl);
+    // 创建网络请求 - 使用动态 URL
+    QString baseUrl = m_baseUrl.isEmpty() ? kDefaultBaseUrl : m_baseUrl;
+    QString apiEndpoint = baseUrl + "/v1/messages";
+
+    QNetworkRequest request(apiEndpoint);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("x-api-key", m_apiKey.toUtf8());
     request.setRawHeader("anthropic-version", "2023-06-01");
@@ -176,9 +187,17 @@ QJsonObject ProtocolAIGenerator::buildApiRequest(const QString &prompt) const
     QJsonObject request;
     request["model"] = kModelName;
     request["max_tokens"] = kMaxTokens;
-    request["temperature"] = kTemperature;
+    // 不设置 temperature，让 API 使用默认值
 
-    // 构建消息数组
+    // 添加系统提示（数组格式，与 ai.txt 成功案例一致）
+    QJsonArray systemArray;
+    QJsonObject systemPrompt;
+    systemPrompt["type"] = "text";
+    systemPrompt["text"] = kSystemPrompt;
+    systemArray.append(systemPrompt);
+    request["system"] = systemArray;
+
+    // 构建用户消息数组
     QJsonArray messages;
     QJsonObject message;
     message["role"] = "user";

@@ -518,13 +518,25 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createAIGeneratedProtoc
     AIProtocolInputDialog aiDialog(const_cast<NewProtocolDialog*>(this));
 
     // 读取API密钥（从环境变量或配置文件）
-    QString apiKey = qgetenv("ANTHROPIC_API_KEY");
+    // 优先使用标准环境变量 ANTHROPIC_AUTH_TOKEN，向后兼容 ANTHROPIC_API_KEY
+    QString apiKey = qgetenv("ANTHROPIC_AUTH_TOKEN");
+    if (apiKey.isEmpty()) {
+        apiKey = qgetenv("ANTHROPIC_API_KEY");  // 向后兼容
+    }
     if (apiKey.isEmpty()) {
         QSettings settings;
         apiKey = settings.value("AI/ApiKey", "").toString();
     }
 
+    // 读取Base URL（从环境变量或配置文件）
+    QString baseUrl = qgetenv("ANTHROPIC_BASE_URL");
+    if (baseUrl.isEmpty()) {
+        QSettings settings;
+        baseUrl = settings.value("AI/BaseUrl", "").toString();
+    }
+
     aiDialog.setApiKey(apiKey);
+    aiDialog.setBaseUrl(baseUrl);
 
     // 执行对话框
     if (aiDialog.exec() == QDialog::Accepted && aiDialog.isGenerationSuccess()) {

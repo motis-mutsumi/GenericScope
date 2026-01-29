@@ -1,5 +1,6 @@
 #include "aiprotocolinputdialog.h"
 #include "protocolaigenerator.h"
+#include "protocolcligenerator.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -10,15 +11,21 @@
 
 AIProtocolInputDialog::AIProtocolInputDialog(QWidget *parent)
     : QDialog(parent)
-    , m_aiGenerator(nullptr)
+    , m_apiGenerator(nullptr)
+    , m_cliGenerator(nullptr)
     , m_generationSuccess(false)
 {
+    // 注册自定义类型，用于信号槽传递
+    qRegisterMetaType<CommandSettingsDialog::ProtocolConfig>("CommandSettingsDialog::ProtocolConfig");
+
+    // ✅ 先创建生成器对象
+    m_apiGenerator = new ProtocolAIGenerator(this);
+    m_cliGenerator = new ProtocolCLIGenerator(this);
+
+    // ✅ 再建立UI和信号槽连接
     setupUI();
     setupConnections();
     applyStyles();
-
-    // 创建AI生成器
-    m_aiGenerator = new ProtocolAIGenerator(this);
 }
 
 AIProtocolInputDialog::~AIProtocolInputDialog()
@@ -84,6 +91,34 @@ void AIProtocolInputDialog::setupUI()
 
     mainLayout->addWidget(rulesGroup);
 
+    // ========== 生成方式选择 ==========
+    QGroupBox *methodGroup = new QGroupBox("生成方式", this);
+    QVBoxLayout *methodLayout = new QVBoxLayout(methodGroup);
+
+    m_useAPIRadio = new QRadioButton("使用API调用（需要API密钥）", this);
+    m_useCLIRadio = new QRadioButton("使用CLI命令行（需要安装claude命令）", this);
+
+    // 默认选择CLI方式（更简单）
+    m_useCLIRadio->setChecked(true);
+
+    m_methodGroup = new QButtonGroup(this);
+    m_methodGroup->addButton(m_useAPIRadio, 0);
+    m_methodGroup->addButton(m_useCLIRadio, 1);
+
+    methodLayout->addWidget(m_useAPIRadio);
+    methodLayout->addWidget(m_useCLIRadio);
+
+    // 添加方式提示
+    m_methodHintLabel = new QLabel(this);
+    m_methodHintLabel->setStyleSheet("color: #3498db; font-size: 12px; padding: 5px;");
+    m_methodHintLabel->setWordWrap(true);
+    methodLayout->addWidget(m_methodHintLabel);
+
+    mainLayout->addWidget(methodGroup);
+
+    // 更新提示信息
+    onMethodChanged();
+
     // ========== 状态和进度 ==========
     m_statusLabel = new QLabel("", this);
     m_statusLabel->setStyleSheet("color: #27ae60; font-weight: bold;");
@@ -130,12 +165,24 @@ void AIProtocolInputDialog::setupConnections()
     connect(m_cancelBtn, &QPushButton::clicked,
             this, &AIProtocolInputDialog::onCancel);
 
-    // 连接AI生成器信号
-    connect(m_aiGenerator, &ProtocolAIGenerator::generationComplete,
+    // 连接方式切换信号
+    connect(m_methodGroup, QOverload<int>::of(&QButtonGroup::buttonClicked),
+            this, &AIProtocolInputDialog::onMethodChanged);
+
+    // 连接API生成器信号
+    connect(m_apiGenerator, &ProtocolAIGenerator::generationComplete,
             this, &AIProtocolInputDialog::onGenerationComplete);
-    connect(m_aiGenerator, &ProtocolAIGenerator::generationFailed,
+    connect(m_apiGenerator, &ProtocolAIGenerator::generationFailed,
             this, &AIProtocolInputDialog::onGenerationFailed);
-    connect(m_aiGenerator, &ProtocolAIGenerator::progressUpdate,
+    connect(m_apiGenerator, &ProtocolAIGenerator::progressUpdate,
+            this, &AIProtocolInputDialog::onProgressUpdate);
+
+    // 连接CLI生成器信号
+    connect(m_cliGenerator, &ProtocolCLIGenerator::generationComplete,
+            this, &AIProtocolInputDialog::onGenerationComplete);
+    connect(m_cliGenerator, &ProtocolCLIGenerator::generationFailed,
+            this, &AIProtocolInputDialog::onGenerationFailed);
+    connect(m_cliGenerator, &ProtocolCLIGenerator::progressUpdate,
             this, &AIProtocolInputDialog::onProgressUpdate);
 }
 
@@ -207,7 +254,11 @@ void AIProtocolInputDialog::applyStyles()
 void AIProtocolInputDialog::setApiKey(const QString &apiKey)
 {
     m_apiKey = apiKey;
-    m_aiGenerator->setApiKey(apiKey);
+}
+
+void AIProtocolInputDialog::setBaseUrl(const QString &baseUrl)
+{
+    m_baseUrl = baseUrl;
 }
 
 CommandSettingsDialog::ProtocolConfig AIProtocolInputDialog::getGeneratedConfig() const
@@ -256,33 +307,51 @@ void AIProtocolInputDialog::onGenerate()
         return;
     }
 
-    // 检查API密钥
-    if (m_apiKey.isEmpty()) {
-        QMessageBox::warning(this, "配置错误",
-            "未配置Claude API密钥！\n\n"
-            "请设置环境变量 ANTHROPIC_API_KEY，或在设置中配置。\n\n"
-            "获取API密钥：https://console.anthropic.com/");
-        return;
-    }
-
-    // 禁用UI
-    setUIEnabled(false);
-    m_progressBar->setVisible(true);
-    m_statusLabel->setText("正在调用AI分析协议...");
-
-    // 调用AI生成器
+    // 获取输入数据
     QString protocolName = "Generated_Protocol";  // 临时名称
     QString rawData = m_rawDataEdit->toPlainText().trimmed();
     QString rules = m_rulesEdit->toPlainText().trimmed();
 
-    m_aiGenerator->generateProtocol(protocolName, rawData, rules);
+    // 根据选择的方式调用不同的生成器
+    if (m_useAPIRadio->isChecked()) {
+        // 使用API方式
+        if (m_apiKey.isEmpty()) {
+            QMessageBox::warning(this, "配置错误",
+                "未配置Claude API密钥！\n\n"
+                "请设置环境变量 ANTHROPIC_API_KEY，或在设置中配置。\n\n"
+                "获取API密钥：https://console.anthropic.com/");
+            return;
+        }
+
+        // 禁用UI
+        setUIEnabled(false);
+        m_progressBar->setVisible(true);
+        m_statusLabel->setText("正在调用Claude API分析协议...");
+
+        // 设置API配置
+        m_apiGenerator->setApiKey(m_apiKey);
+        m_apiGenerator->setBaseUrl(m_baseUrl);
+
+        // 调用API生成器
+        m_apiGenerator->generateProtocol(protocolName, rawData, rules);
+    } else {
+        // 使用CLI方式
+        // 禁用UI
+        setUIEnabled(false);
+        m_progressBar->setVisible(true);
+        m_statusLabel->setText("正在调用Claude CLI分析协议...");
+
+        // 调用CLI生成器
+        m_cliGenerator->generateProtocol(protocolName, rawData, rules);
+    }
 }
 
 void AIProtocolInputDialog::onCancel()
 {
     // 如果正在生成，取消生成
     if (m_progressBar->isVisible()) {
-        m_aiGenerator->cancel();
+        m_apiGenerator->cancel();
+        m_cliGenerator->cancel();
         setUIEnabled(true);
         m_progressBar->setVisible(false);
         m_statusLabel->setText("已取消生成");
@@ -291,18 +360,37 @@ void AIProtocolInputDialog::onCancel()
     }
 }
 
+void AIProtocolInputDialog::onMethodChanged()
+{
+    if (m_useAPIRadio->isChecked()) {
+        m_methodHintLabel->setText(
+            "💡 API方式：需要配置API密钥，适合生产环境和批量生成。\n"
+            "获取密钥：https://console.anthropic.com/");
+    } else {
+        m_methodHintLabel->setText(
+            "💡 CLI方式：需要安装claude命令并登录，适合个人开发和测试。\n"
+            "安装方法：详见文档 docs/ai-protocol-cli-guide.md");
+    }
+}
+
 void AIProtocolInputDialog::onGenerationComplete(
     const CommandSettingsDialog::ProtocolConfig &config)
 {
+    qDebug() << "========== onGenerationComplete被调用 ==========";
+    qDebug() << "接收到的配置字段数:" << config.fields.size();
+    qDebug() << "协议名称:" << config.name;
+
     m_generatedConfig = config;
     m_generationSuccess = true;
 
+    qDebug() << "恢复UI...";
     // 恢复UI
     setUIEnabled(true);
     m_progressBar->setVisible(false);
     m_statusLabel->setText("✓ 协议配置生成成功！");
     m_statusLabel->setStyleSheet("color: #27ae60; font-weight: bold; font-size: 14px;");
 
+    qDebug() << "显示成功对话框...";
     // 显示成功提示
     QMessageBox::information(this, "生成成功",
         QString("协议配置已成功生成！\n\n"
@@ -312,7 +400,9 @@ void AIProtocolInputDialog::onGenerationComplete(
             .arg(config.name)
             .arg(config.fields.size()));
 
+    qDebug() << "调用accept()关闭对话框...";
     accept();
+    qDebug() << "========== onGenerationComplete执行完毕 ==========";
 }
 
 void AIProtocolInputDialog::onGenerationFailed(const QString &errorMessage)

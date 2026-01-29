@@ -14,6 +14,7 @@ HEADERS += \
     ui/protocoltypeconverter.h \
     ui/protocoltestdialog.h \
     ui/protocolaigenerator.h \
+    ui/protocolcligenerator.h \
     ui/aiprotocolinputdialog.h \
     config/config.h \
     device/devicemanager.h
@@ -26,6 +27,7 @@ SOURCES += \
     ui/protocoltypeconverter.cpp \
     ui/protocoltestdialog.cpp \
     ui/protocolaigenerator.cpp \
+    ui/protocolcligenerator.cpp \
     ui/aiprotocolinputdialog.cpp \
     config/config.cpp \
     device/devicemanager.cpp

@@ -1,0 +1,11 @@
+{
+  "max_tokens": 32000,
+  "messages": [
+    {
+      "content": "你是一个协议解析专家。请根据以下信息生成完整的协议配置。\n\n# 协议名称\nGenerated_Protocol\n\n# 原始16进制数据样本\nAA55 0101 2E00 C7F6 2901 601C 0000 0266 F7FF 38DA FFFF 959B 0100 C9C9 0E00 6104 EDFF BF46 1810 D4FF 0000 E1FF 0000 40FF 0000 0000 DC7E\n\n# 解析规则描述\n原始数据从第7字节开始，取44字节，按照小端int32模式解析为11个数据\n数据排列顺序：时间戳、温度、角速度(3个)、加速度(3个)、欧拉角(3个)\n\n转换公式：\n- 温度/256 = 实际温度\n- 角速度/65536/1000000*量程 = 实际角速度\n- 加速度/65536/32768*量程 = 实际加速度\n- 欧拉角转成I16后*180/32768 = 实际欧拉角\n\n# 任务要求\n请分析上述信息，生成完整的协议配置JSON。你需要：\n\n1. **分析帧结构**：识别帧头、帧尾、长度字段、校验码位置\n2. **推断校验方式**：根据数据特征推断可能的校验算法（Sum/XOR/CRC8/CRC16/CRC32）\n3. **解析数据字段**：根据解析规则，确定每个字段的：\n   - 起始位置（字节偏移）\n   - 数据类型（int8/uint8/int16/uint16/int32/uint32/float/double）\n   - 字节长度\n   - 缩放因子（scale）\n   - 偏移量（offset）\n   - 单位\n   - 合理的最大/最小值范围\n\n4. **字节序判断**：分析数据是大端序还是小端序\n\n# 输出格式\n请严格按照以下JSON格式输出，不要添加任何额外的解释文字：\n\n```json\n{\n  \"name\": \"协议名称\",\n  \"version\": \"1.0.0\",\n  \"description\": \"协议描述\",\n  \"frameHeader\": \"帧头16进制（如 AA 55）\",\n  \"frameFooter\": \"帧尾16进制（如 0D 0A，无帧尾则为空字符串）\",\n  \"lengthPosition\": 长度字段位置（-1表示无长度字段）,\n  \"checksumType\": \"校验类型：None/Sum/XOR/CRC8/CRC16_MODBUS/CRC16_CCITT/CRC32\",\n  \"checksumScope\": \"校验范围：FullFrame/AfterHeader/DataOnly/Custom\",\n  \"checksumStart\": 校验起始位置,\n  \"checksumLength\": 校验字节数（-1表示到帧尾）,\n  \"checksumPosition\": 校验码位置（-1表示帧尾前）,\n  \"byteOrder\": \"字节序：LittleEndian/BigEndian\",\n  \"checksumByteOrder\": \"校验码字节序：LittleEndian/BigEndian\",\n  \"frequency\": 数据频率（Hz）,\n  \"separator\": \"分隔符（文本协议用）\",\n  \"fields\": [\n    {\n      \"index\": 1,\n      \"elementHead\": 起始字节位置,\n      \"name\": \"字段名称\",\n      \"type\": \"数据类型：Int8/UInt8/Int16/UInt16/Int32/UInt32/Float/Double/MByte/String\",\n      \"byteLength\": 字节长度,\n      \"scale\": 缩放因子,\n      \"offset\": 偏移量,\n      \"unit\": \"单位\",\n      \"maximum\": 最大值,\n      \"minimum\": 最小值,\n      \"description\": \"字段描述\",\n      \"tip\": \"提示信息\"\n    }\n  ]\n}\n```\n\n# 注意事项\n1. 帧头、帧尾使用空格分隔的16进制字节，如 \"AA 55\"\n2. 位置索引从0开始\n3. 缩放因子和偏移量用于计算实际值：实际值 = (原始值 * scale) + offset\n4. 字段index从1开始递增\n5. 只输出JSON，不要有其他文字\n",
+      "role": "user"
+    }
+  ],
+  "model": "claude-sonnet-4-5-20250929",
+  "system": "你是一个专业的协议解析专家，擅长分析二进制通信协议的帧结构、校验算法和数据字段。你的任务是根据用户提供的16进制数据样本和解析规则，生成完整准确的协议配置JSON。请严格按照指定的JSON格式输出，确保字段完整、类型正确、数值合理。"
+}
