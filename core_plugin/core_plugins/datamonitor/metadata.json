@@ -1,0 +1,9 @@
+{
+    "id": "com.genericscope.plugin.datamonitor",
+    "name": "数据监控插件",
+    "version": "1.0.0",
+    "author": "GenericScope Team",
+    "description": "实时监控传感器数据，超过阈值时发出警报",
+    "dependencies": [],
+    "category": "monitoring"
+}

@@ -1,6 +1,9 @@
 #include "scopeuart.h"
+#include "protocol/protocolparser.h"
+#include "protocol/protocolmanager.h"
 #include <iostream>
 #include <process.h>
+#include <QDebug>
 
 using namespace std;
 
@@ -10,6 +13,50 @@ ScopeUart::ScopeUart()
 
 ScopeUart::~ScopeUart()
 {
+    close();
+}
+
+// ============================================================================
+// 协议解析相关实现 (新增)
+// ============================================================================
+
+void ScopeUart::setProtocol(const QString &protocolName)
+{
+    ProtocolManager *manager = ProtocolManager::instance();
+
+    if (!manager->hasProtocol(protocolName)) {
+        qWarning() << "ScopeUart: Protocol not found:" << protocolName;
+        return;
+    }
+
+    // 创建协议解析器
+    m_parser = manager->createParser(protocolName);
+    m_currentProtocolName = protocolName;
+
+    qDebug() << "ScopeUart: Protocol set to" << protocolName;
+}
+
+QString ScopeUart::currentProtocol() const
+{
+    return m_currentProtocolName;
+}
+
+void ScopeUart::setParseResultCallback(std::function<void(const ParseResult&)> callback)
+{
+    m_parseResultCallback = callback;
+}
+
+size_t ScopeUart::getBufferSize() const
+{
+    std::lock_guard<std::mutex> lock(m_bufferMutex);
+    return m_receiveBuffer.size();
+}
+
+void ScopeUart::clearBuffer()
+{
+    std::lock_guard<std::mutex> lock(m_bufferMutex);
+    m_receiveBuffer.clear();
+    qDebug() << "ScopeUart: Receive buffer cleared";
 }
 
 ScopeTransferStatus ScopeUart::open()
@@ -381,10 +428,82 @@ unsigned int __stdcall comRecv(void* param)
             }
             else if (read_type == Body)
             {
+                // 原始回调（保持向后兼容）
                 if (obj->m_xferCallBackFunction != NULL)
                 {
                     obj->m_xferCallBackFunction((uint8_t *)p_read_buf, dw_read + length_padding + header_len);
                 }
+
+                // 协议解析（新增）
+                if (obj->m_parser && obj->m_parseResultCallback)
+                {
+                    // 将数据添加到缓冲区
+                    QByteArray newData((const char*)p_read_buf, dw_read + length_padding + header_len);
+
+                    {
+                        std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
+                        obj->m_receiveBuffer.append(newData);
+                    }
+
+                    // 尝试解析完整帧
+                    bool continueParsing = true;
+                    while (continueParsing)
+                    {
+                        QByteArray dataToParse;
+                        {
+                            std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
+                            dataToParse = obj->m_receiveBuffer;
+                        }
+
+                        if (dataToParse.isEmpty()) {
+                            break;
+                        }
+
+                        // 解析数据
+                        ParseResult result = obj->m_parser->parse(dataToParse);
+
+                        if (result.success)
+                        {
+                            // 解析成功，发送结果
+                            obj->m_parseResultCallback(result);
+
+                            // 从缓冲区移除已解析的数据
+                            {
+                                std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
+                                if (result.consumedBytes > 0 && result.consumedBytes <= obj->m_receiveBuffer.size())
+                                {
+                                    obj->m_receiveBuffer.remove(0, result.consumedBytes);
+                                }
+                                else
+                                {
+                                    // 异常情况：consumedBytes不合理，清空缓冲区
+                                    qWarning() << "ScopeUart: Invalid consumedBytes:" << result.consumedBytes
+                                               << ", buffer size:" << obj->m_receiveBuffer.size();
+                                    obj->m_receiveBuffer.clear();
+                                    continueParsing = false;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 解析失败 - 数据可能不完整，继续等待
+                            continueParsing = false;
+
+                            // 缓冲区溢出保护
+                            {
+                                std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
+                                const int MAX_BUFFER_SIZE = 4096;
+                                if (obj->m_receiveBuffer.size() > MAX_BUFFER_SIZE)
+                                {
+                                    qWarning() << "ScopeUart: Buffer overflow ("
+                                               << obj->m_receiveBuffer.size() << " bytes), clearing old data";
+                                    obj->m_receiveBuffer.clear();
+                                }
+                            }
+                        }
+                    }
+                }
+
                 reset_param();
             }
         }

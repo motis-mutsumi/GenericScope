@@ -18,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_deviceManager(new DeviceManager(this))
     , m_linePlot(nullptr)
+    , m_3dView(nullptr)
     , m_logWidget(nullptr)
     , m_dataRecorder(new DataRecorder(this))
     , m_updateTimer(new QTimer(this))
@@ -212,15 +213,18 @@ void MainWindow::setupDataTable()
 
 void MainWindow::setup3DVisualization()
 {
-    // TODO: 实现3D可视化
-    // 这里可以使用 Qt3D 或者 OpenGL 来实现IMU的3D姿态显示
-    // 暂时显示占位信息
-    QLabel *placeholder = new QLabel("3D Visualization\n(To be implemented)", this);
-    placeholder->setAlignment(Qt::AlignCenter);
-    placeholder->setStyleSheet("QLabel { background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; }");
+    // 创建3D可视化组件
+    m_3dView = new IMU3DView(this);
 
+    // 将3D视图添加到中间面板容器
     QVBoxLayout *layout = new QVBoxLayout(ui->visualization3DContainer);
-    layout->addWidget(placeholder);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(m_3dView);
+
+    // 连接信号（可选，用于调试）
+    connect(m_3dView, &IMU3DView::angleChanged, this, [](double roll, double pitch, double yaw) {
+        qDebug() << "3D View angle changed - Roll:" << roll << "Pitch:" << pitch << "Yaw:" << yaw;
+    });
 }
 
 void MainWindow::setupChart()
@@ -619,6 +623,11 @@ void MainWindow::updateAttitudeDisplay(double roll, double pitch, double yaw)
     ui->rollValueLabel->setText(QString::number(roll, 'f', 2));
     ui->pitchValueLabel->setText(QString::number(pitch, 'f', 2));
     ui->yawValueLabel->setText(QString::number(yaw, 'f', 2));
+
+    // 更新3D视图
+    if (m_3dView) {
+        m_3dView->setAttitude(roll, pitch, yaw);
+    }
 }
 
 void MainWindow::updateDataTable(const QString &message, const QVariant &value, const QString &unit)

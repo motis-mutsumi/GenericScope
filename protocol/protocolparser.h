@@ -18,8 +18,9 @@ struct ParseResult {
     QMap<QString, QVariant> fieldValues; // 字段名 -> 值
     QByteArray rawData;                  // 原始数据
     quint64 timestamp;                   // 时间戳（毫秒）
+    int consumedBytes;                   // 已消耗的字节数（用于缓冲区管理）
 
-    ParseResult() : success(false), timestamp(0) {}
+    ParseResult() : success(false), timestamp(0), consumedBytes(0) {}
 };
 
 /**

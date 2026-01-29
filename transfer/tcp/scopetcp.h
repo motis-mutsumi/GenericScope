@@ -1,7 +1,6 @@
 #ifndef SCOPETCP_H
 #define SCOPETCP_H
 
-#include "scopeimagetransfer.h"
 #include "scopecontroltransfer.h"
 #include <shared_mutex>
 #include <string>
@@ -13,7 +12,7 @@ struct TcpInfo
     uint16_t port;
 };
 #pragma pack(pop)
-class TRANSFER_EXPORT ScopeTcp : public ScopeImageTransfer, public ScopeControlTransfer
+class TRANSFER_EXPORT ScopeTcp : public ScopeControlTransfer
 {
 public:
     ScopeTcp();
@@ -24,10 +23,6 @@ public:
 
     // override ScopeControlTransfer
     virtual ScopeTransferStatus readData(uint8_t *data, uint32_t read_len, uint8_t *cmd = nullptr, int write_len = 0) override;
-
-    // override ScopeImageTransfer
-    virtual ScopeTransferStatus startStream() override;
-    virtual ScopeTransferStatus stopStream() override;
 
     void setTcpInfo(const TcpInfo &info) noexcept
     {

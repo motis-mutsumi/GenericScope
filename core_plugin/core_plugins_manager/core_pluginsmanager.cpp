@@ -81,10 +81,15 @@ bool Core_PluginsManager::loadPlugin(const QString &pluginPath)
     }
 
     // 连接信号
-    connect(plugin, &CorePluginsBase::sendMessageToManager,
-            this, &Core_PluginsManager::onPluginMessage);
-    connect(plugin, &CorePluginsBase::sendMessageToMain,
-            this, &Core_PluginsManager::pluginMessage);
+    // 注意：CorePluginsBase 是纯接口，signals 在具体插件类中定义
+    // 所以需要将插件转换为 QObject* 并使用传统的 SIGNAL/SLOT 宏
+    QObject *pluginObj = qobject_cast<QObject*>(loader->instance());
+    if (pluginObj) {
+        connect(pluginObj, SIGNAL(sendMessageToManager(CorePluginMetaData)),
+                this, SLOT(onPluginMessage(CorePluginMetaData)));
+        connect(pluginObj, SIGNAL(sendMessageToMain(CorePluginMetaData)),
+                this, SIGNAL(pluginMessage(CorePluginMetaData)));
+    }
 
     m_plugins[pluginName] = plugin;
     m_loaders[pluginName] = loader;

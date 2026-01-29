@@ -1,19 +1,19 @@
 #ifndef CORE_PLUGINSBASE_H
 #define CORE_PLUGINSBASE_H
 
-#include <QObject>
+#include <QString>
 #include <QWidget>
 #include "core_pluginmetadata.h"
 
 /**
- * @brief 插件基类
+ * @brief 插件接口类（纯虚接口）
  *
- * 所有插件必须继承此类并实现其虚函数
+ * 所有插件必须继承此接口并实现其虚函数。
+ * 注意：这是一个纯接口类，不继承 QObject。
+ * 插件类应该同时继承 QObject 和此接口。
  */
-class CorePluginsBase : public QObject
+class CorePluginsBase
 {
-    Q_OBJECT
-
 public:
     virtual ~CorePluginsBase() {}
 
@@ -57,19 +57,6 @@ public:
      * @param data 消息数据
      */
     virtual void handleManagerMessage(const CorePluginMetaData &data) = 0;
-
-signals:
-    /**
-     * @brief 向管理器发送消息
-     * @param data 消息数据
-     */
-    void sendMessageToManager(const CorePluginMetaData &data);
-
-    /**
-     * @brief 向主窗口发送消息
-     * @param data 消息数据
-     */
-    void sendMessageToMain(const CorePluginMetaData &data);
 };
 
 #define CorePluginsBase_iid "com.genericscope.CorePluginsBase"

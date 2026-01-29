@@ -108,16 +108,6 @@ ScopeTransferStatus ScopeTcp::readData(uint8_t *rx_data, uint32_t read_len, uint
     return read_len == rx_total_len ? Ok : Error;
 }
 
-ScopeTransferStatus ScopeTcp::startStream()
-{
-    return Ok;
-}
-
-ScopeTransferStatus ScopeTcp::stopStream()
-{
-    return Ok;
-}
-
 int ScopeTcp::initTcp()
 {
     // init socket

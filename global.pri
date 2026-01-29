@@ -2,6 +2,7 @@
 
 # Qt 模块
 QT += core gui widgets network serialport
+QT += 3dcore 3drender 3dextras 3dinput
 
 # C++ 标准
 CONFIG += c++17

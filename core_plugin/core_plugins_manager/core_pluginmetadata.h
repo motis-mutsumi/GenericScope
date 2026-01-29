@@ -16,7 +16,8 @@ struct CorePluginMetaData
         Response,       // 响应消息
         Data,           // 数据消息
         Event,          // 事件消息
-        Config          // 配置消息
+        Config,         // 配置消息
+        Alert           // 警报消息
     };
 
     MessageType type;       // 消息类型

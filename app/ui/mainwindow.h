@@ -10,6 +10,7 @@
 #include "common_component/log/logwidget.h"
 #include "common_component/record/datarecorder.h"
 #include "core_plugin/core_plugins_manager/core_pluginsmanager.h"
+#include "imu3dview.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -89,6 +90,7 @@ private:
 
     // 绘图组件
     LinePlot *m_linePlot;
+    IMU3DView *m_3dView;        // 3D可视化组件
 
     // 日志和录制
     LogWidget *m_logWidget;

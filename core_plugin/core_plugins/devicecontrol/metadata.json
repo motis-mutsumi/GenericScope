@@ -1,0 +1,9 @@
+{
+    "id": "com.genericscope.plugin.devicecontrol",
+    "name": "设备控制插件",
+    "version": "1.0.0",
+    "author": "GenericScope Team",
+    "description": "向设备发送控制指令",
+    "dependencies": [],
+    "category": "control"
+}

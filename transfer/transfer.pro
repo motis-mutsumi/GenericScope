@@ -19,13 +19,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     scopecontroltransfer.cpp \
-    scopeimagetransfer.cpp \
     scopetransferbasic.cpp \
     scopetransfermanager.cpp
 
 HEADERS += \
     scopecontroltransfer.h \
-    scopeimagetransfer.h \
     scopetransferbasic.h \
     transfer_global.h \
     scopetransfermanager.h
@@ -40,6 +38,7 @@ INCLUDEPATH += $$PWD/../util
 INCLUDEPATH += $$PWD/../libs/spdlog
 INCLUDEPATH += $$PWD/../libs
 INCLUDEPATH += $$PWD/../common_component/log
+INCLUDEPATH += $$PWD/../protocol
 
 # 库依赖配置
 # 注意：由于使用了 ordered 构建，log 库会在 transfer 之前编译
@@ -47,6 +46,11 @@ INCLUDEPATH += $$PWD/../common_component/log
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../common_component/log/release/ -llog
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../common_component/log/debug/ -llog
 else:unix: LIBS += -L$$OUT_PWD/../common_component/log/ -llog
+
+# protocol 模块依赖 (新增)
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../protocol/release/ -lprotocol
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../protocol/debug/ -lprotocol
+else:unix: LIBS += -L$$OUT_PWD/../protocol/ -lprotocol
 
 # 同时保留原有的库路径配置（用于非 shadow build）
 LIBS += -L$$PWD/../Bin/$$ARCH/$$BUILD_MODE

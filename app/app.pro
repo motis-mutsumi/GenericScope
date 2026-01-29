@@ -16,6 +16,7 @@ HEADERS += \
     ui/protocolaigenerator.h \
     ui/protocolcligenerator.h \
     ui/aiprotocolinputdialog.h \
+    ui/imu3dview.h \
     config/config.h \
     device/devicemanager.h
 
@@ -29,6 +30,7 @@ SOURCES += \
     ui/protocolaigenerator.cpp \
     ui/protocolcligenerator.cpp \
     ui/aiprotocolinputdialog.cpp \
+    ui/imu3dview.cpp \
     config/config.cpp \
     device/devicemanager.cpp
 

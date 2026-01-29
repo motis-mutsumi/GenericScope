@@ -51,6 +51,10 @@ ParseResult ProtocolParser::parse(const QByteArray &data)
     result.rawData = frame;
     result.timestamp = QDateTime::currentMSecsSinceEpoch();
 
+    // 计算已消耗的字节数（用于缓冲区管理）
+    // consumedBytes = 帧起始位置 + 帧长度
+    result.consumedBytes = headerPos + frame.size();
+
     return result;
 }
 
