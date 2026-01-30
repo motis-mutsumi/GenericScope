@@ -54,7 +54,10 @@ CommandSettingsDialog::~CommandSettingsDialog()
 void CommandSettingsDialog::setupUI()
 {
     setWindowTitle("协议配置");
-    resize(1200, 700);
+    resize(1600, 800);
+
+    // 移除标题栏的帮助按钮（？），改用底部的"帮助"按钮
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
     // 主布局
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -76,7 +79,7 @@ void CommandSettingsDialog::setupUI()
     setupFieldConfigGroup();
     splitter->addWidget(m_fieldConfigGroup);
 
-    splitter->setStretchFactor(0, 2);
+    splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 3);
 
     mainLayout->addWidget(splitter);
@@ -247,19 +250,20 @@ void CommandSettingsDialog::setupFieldConfigGroup()
     m_fieldTable->setSelectionMode(QAbstractItemView::SingleSelection);
     m_fieldTable->setAlternatingRowColors(true);
     m_fieldTable->verticalHeader()->setVisible(false);
+    m_fieldTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 
-    // 设置列宽
-    m_fieldTable->setColumnWidth(kFieldTableIndexColumn, 50);
-    m_fieldTable->setColumnWidth(kFieldTableElementHeadColumn, 60);
-    m_fieldTable->setColumnWidth(kFieldTableNameColumn, 100);
-    m_fieldTable->setColumnWidth(kFieldTableTypeColumn, 100);
-    m_fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);
-    m_fieldTable->setColumnWidth(kFieldTableScaleColumn, 80);
-    m_fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);
-    m_fieldTable->setColumnWidth(kFieldTableUnitColumn, 60);
-    m_fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);
-    m_fieldTable->setColumnWidth(kFieldTableMinColumn, 80);
-    m_fieldTable->setColumnWidth(kFieldTableDescColumn, 120);
+    // 优化列宽设置 - 根据内容重要性调整
+    m_fieldTable->setColumnWidth(kFieldTableIndexColumn, 50);       // 序号
+    m_fieldTable->setColumnWidth(kFieldTableElementHeadColumn, 70); // 起始
+    m_fieldTable->setColumnWidth(kFieldTableNameColumn, 120);       // 名称（加宽）
+    m_fieldTable->setColumnWidth(kFieldTableTypeColumn, 90);        // 类型
+    m_fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);  // 长度
+    m_fieldTable->setColumnWidth(kFieldTableScaleColumn, 90);       // 缩放因子
+    m_fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);      // 偏移量
+    m_fieldTable->setColumnWidth(kFieldTableUnitColumn, 70);        // 单位
+    m_fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);         // 最大值
+    m_fieldTable->setColumnWidth(kFieldTableMinColumn, 80);         // 最小值
+    m_fieldTable->setColumnWidth(kFieldTableDescColumn, 150);       // 描述（加宽）
 
     mainLayout->addWidget(m_fieldTable);
 }
@@ -284,15 +288,18 @@ void CommandSettingsDialog::setupButtons()
     m_buttonBox = new QDialogButtonBox(this);
     m_buttonBox->setStandardButtons(QDialogButtonBox::Ok |
                                      QDialogButtonBox::Cancel |
-                                     QDialogButtonBox::Apply);
+                                     QDialogButtonBox::Apply |
+                                     QDialogButtonBox::Help);
 
     QPushButton *okBtn = m_buttonBox->button(QDialogButtonBox::Ok);
     QPushButton *cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
     QPushButton *applyBtn = m_buttonBox->button(QDialogButtonBox::Apply);
+    QPushButton *helpBtn = m_buttonBox->button(QDialogButtonBox::Help);
 
     okBtn->setText("确定");
     cancelBtn->setText("取消");
     applyBtn->setText("应用");
+    helpBtn->setText("帮助");
 
     buttonLayout->addWidget(m_buttonBox);
 }
@@ -350,6 +357,10 @@ void CommandSettingsDialog::setupConnections()
     QPushButton *applyBtn = m_buttonBox->button(QDialogButtonBox::Apply);
     connect(applyBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onApply);
+
+    QPushButton *helpBtn = m_buttonBox->button(QDialogButtonBox::Help);
+    connect(helpBtn, &QPushButton::clicked,
+            this, &CommandSettingsDialog::showHelp);
 }
 
 // ========== 协议管理槽函数 ==========
@@ -789,6 +800,10 @@ void CommandSettingsDialog::onApply()
         m_protocols[m_currentProtocolName] = getCurrentConfig();
     }
     saveProtocols();
+
+    // 同步到ProtocolManager，这会触发currentProtocolChanged信号
+    syncToProtocolManager();
+
     m_isModified = false;
     QMessageBox::information(this, "成功", "设置已应用！");
 }
@@ -799,6 +814,10 @@ void CommandSettingsDialog::onOk()
         m_protocols[m_currentProtocolName] = getCurrentConfig();
     }
     saveProtocols();
+
+    // 同步到ProtocolManager，这会触发currentProtocolChanged信号
+    syncToProtocolManager();
+
     accept();
 }
 
@@ -1288,81 +1307,13 @@ QMap<QString, CommandSettingsDialog::ProtocolConfig> CommandSettingsDialog::getP
 
 void CommandSettingsDialog::applyStyles()
 {
-    QString styleSheet = R"(
-        QGroupBox {
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            margin-top: 10px;
-            font-weight: bold;
-            padding-top: 10px;
-        }
+    // 移除硬编码的样式，让对话框继承全局主题（亮色/暗色）
+    // 之前这里强制设置白色背景，导致暗色主题失效
 
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            padding: 0 5px;
-            background-color: white;
-        }
+    // 如果需要对话框特定样式，应该使用objectName配合全局QSS
+    // 例如：setObjectName("protocolDialog");
 
-        QPushButton {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 14px;
-            min-width: 80px;
-        }
-
-        QPushButton:hover {
-            background-color: #45a049;
-        }
-
-        QPushButton:pressed {
-            background-color: #3d8b40;
-        }
-
-        QPushButton:disabled {
-            background-color: #cccccc;
-            color: #666666;
-        }
-
-        QLineEdit, QTextEdit {
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 6px;
-            background-color: white;
-        }
-
-        QLineEdit:focus, QTextEdit:focus {
-            border: 1px solid #4CAF50;
-        }
-
-        QTableWidget {
-            gridline-color: #ddd;
-            background-color: white;
-            alternate-background-color: #f9f9f9;
-        }
-
-        QTableWidget::item:selected {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        QHeaderView::section {
-            background-color: #f0f0f0;
-            padding: 6px;
-            border: 1px solid #ddd;
-            font-weight: bold;
-        }
-
-        QLabel {
-            font-weight: bold;
-            color: #333;
-        }
-    )";
-
-    setStyleSheet(styleSheet);
+    // 不再调用 setStyleSheet()，完全依赖全局主题
 }
 
 // ========== 与ProtocolManager交互 ==========
@@ -1637,4 +1588,89 @@ bool CommandSettingsDialog::parseFieldsFromJSON(QFile *file, QVector<FieldConfig
     }
 
     return true;
+}
+
+// ========== 帮助功能 ==========
+
+void CommandSettingsDialog::showHelp()
+{
+    QString helpText =
+        "<h2>协议配置帮助</h2>"
+
+        "<h3>一、协议信息</h3>"
+        "<ul>"
+        "<li><b>名称：</b>协议的唯一标识符，例如 IMU_Protocol_V1</li>"
+        "<li><b>版本：</b>协议版本号，例如 1.0.0</li>"
+        "<li><b>描述：</b>协议的详细说明</li>"
+        "</ul>"
+
+        "<h3>二、帧结构配置</h3>"
+        "<ul>"
+        "<li><b>帧头(HEX)：</b>帧起始标识，16进制字符串，如 FF AA</li>"
+        "<li><b>帧尾(HEX)：</b>帧结束标识（可选），如 0D 0A</li>"
+        "<li><b>长度位置：</b>数据长度字段在帧中的位置（-1表示无长度字段）</li>"
+        "</ul>"
+
+        "<h3>三、校验配置</h3>"
+        "<ul>"
+        "<li><b>无校验：</b>不进行数据校验</li>"
+        "<li><b>Sum：</b>累加和校验</li>"
+        "<li><b>XOR：</b>异或校验</li>"
+        "<li><b>CRC8：</b>8位循环冗余校验</li>"
+        "<li><b>CRC16：</b>16位CRC-MODBUS校验</li>"
+        "<li><b>CRC32：</b>32位IEEE 802.3标准校验</li>"
+        "</ul>"
+
+        "<h3>四、字段配置</h3>"
+        "<ul>"
+        "<li><b>起始：</b>字段在数据区的字节偏移量</li>"
+        "<li><b>名称：</b>字段名称（必填）</li>"
+        "<li><b>类型：</b>支持10种数据类型<br/>"
+        "　　• int8_t/uint8_t：有符号/无符号8位整数<br/>"
+        "　　• int16_t/uint16_t：有符号/无符号16位整数<br/>"
+        "　　• int32_t/uint32_t：有符号/无符号32位整数<br/>"
+        "　　• float：32位浮点数<br/>"
+        "　　• double：64位浮点数<br/>"
+        "　　• mbyte_t：多字节整数（需要缩放因子）<br/>"
+        "　　• string：字符串</li>"
+        "<li><b>长度：</b>字段占用的字节数</li>"
+        "<li><b>缩放因子：</b>原始值乘以缩放因子得到实际值</li>"
+        "<li><b>偏移量：</b>缩放后加上的偏移值</li>"
+        "<li><b>单位：</b>数据单位，如 °C、m/s</li>"
+        "<li><b>最大值/最小值：</b>数据的有效范围</li>"
+        "<li><b>描述：</b>字段的详细说明</li>"
+        "<li><b>提示：</b>显示给用户的提示信息</li>"
+        "</ul>"
+
+        "<h3>五、快捷功能</h3>"
+        "<ul>"
+        "<li><b>新建协议：</b>创建新的协议配置</li>"
+        "<li><b>删除协议：</b>删除当前协议</li>"
+        "<li><b>导入字段：</b>从CSV或JSON文件批量导入字段</li>"
+        "<li><b>导入/导出协议：</b>协议配置的备份与恢复</li>"
+        "<li><b>生成协议：</b>保存并激活当前协议</li>"
+        "<li><b>测试协议：</b>使用示例数据测试协议解析</li>"
+        "</ul>"
+
+        "<h3>六、数据转换公式</h3>"
+        "<p>实际值 = (原始值 × 缩放因子) + 偏移量</p>"
+        "<p>示例：温度传感器输出0-255，对应-40°C至85°C<br/>"
+        "　　缩放因子 = 0.49<br/>"
+        "　　偏移量 = -40<br/>"
+        "　　实际温度 = (原始值 × 0.49) - 40</p>"
+
+        "<hr/>"
+        "<p><b>详细文档：</b>docs/protocol-config-system-spec.md</p>";
+
+    QMessageBox helpBox(this);
+    helpBox.setWindowTitle("协议配置帮助");
+    helpBox.setTextFormat(Qt::RichText);
+    helpBox.setText(helpText);
+    helpBox.setIcon(QMessageBox::Information);
+    helpBox.setStandardButtons(QMessageBox::Ok);
+
+    // 设置对话框大小
+    helpBox.setStyleSheet("QLabel{min-width: 600px; min-height: 500px;}");
+
+    helpBox.exec();
 }

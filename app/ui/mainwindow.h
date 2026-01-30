@@ -50,6 +50,9 @@ private slots:
     // 设置菜单
     void onCommandSettingsTriggered();
 
+    // 协议管理
+    void onProtocolChanged(const QString &name);
+
     // 图表参数
     void on_xRangeComboBox_currentTextChanged(const QString &text);
     void on_xDotComboBox_currentTextChanged(const QString &text);
@@ -77,8 +80,10 @@ private:
     void updateIMUStatus(const QString &status, double dataRate, const QString &error);
     void updateTimeDisplay();
     void setupDataTable();
+    void rebuildDataTableFromProtocol();
     void setup3DVisualization();
     void setupChart();
+    void setupLogWidget();
     void refreshAvailablePorts();
     QString generateBuiltInStyle(bool darkMode);
 
@@ -91,6 +96,7 @@ private:
     // 绘图组件
     LinePlot *m_linePlot;
     IMU3DView *m_3dView;        // 3D可视化组件
+    class HistogramPlot *m_histogramPlot;  // 直方图组件（前向声明）
 
     // 日志和录制
     LogWidget *m_logWidget;

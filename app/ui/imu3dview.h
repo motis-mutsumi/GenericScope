@@ -40,6 +40,12 @@ public:
      */
     void resetCamera();
 
+    /**
+     * @brief 设置场景背景色
+     * @param color 背景颜色
+     */
+    void setBackgroundColor(const QColor &color);
+
 signals:
     /**
      * @brief 姿态角度变化信号

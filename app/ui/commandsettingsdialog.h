@@ -183,6 +183,9 @@ private slots:
     void onOk();
     void onCancel();
 
+    // 帮助按钮
+    void showHelp();
+
 private:
     void setupUI();
     QWidget* setupProtocolTabs();

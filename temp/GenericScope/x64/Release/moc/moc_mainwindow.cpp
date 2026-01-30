@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_MainWindow_t {
-    QByteArrayData data[24];
-    char stringdata0[501];
+    QByteArrayData data[26];
+    char stringdata0[524];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -45,17 +45,19 @@ QT_MOC_LITERAL(9, 185, 25), // "on_darkModeButton_toggled"
 QT_MOC_LITERAL(10, 211, 21), // "on_menuButton_clicked"
 QT_MOC_LITERAL(11, 233, 23), // "on_filterButton_clicked"
 QT_MOC_LITERAL(12, 257, 26), // "onCommandSettingsTriggered"
-QT_MOC_LITERAL(13, 284, 36), // "on_xRangeComboBox_currentText..."
-QT_MOC_LITERAL(14, 321, 34), // "on_xDotComboBox_currentTextCh..."
-QT_MOC_LITERAL(15, 356, 30), // "on_chartSettingsButton_clicked"
-QT_MOC_LITERAL(16, 387, 25), // "onDeviceConnectionChanged"
-QT_MOC_LITERAL(17, 413, 9), // "connected"
-QT_MOC_LITERAL(18, 423, 20), // "onDeviceDataReceived"
-QT_MOC_LITERAL(19, 444, 4), // "data"
-QT_MOC_LITERAL(20, 449, 13), // "onDeviceError"
-QT_MOC_LITERAL(21, 463, 5), // "error"
-QT_MOC_LITERAL(22, 469, 13), // "onUpdateTimer"
-QT_MOC_LITERAL(23, 483, 17) // "onDataUpdateTimer"
+QT_MOC_LITERAL(13, 284, 17), // "onProtocolChanged"
+QT_MOC_LITERAL(14, 302, 4), // "name"
+QT_MOC_LITERAL(15, 307, 36), // "on_xRangeComboBox_currentText..."
+QT_MOC_LITERAL(16, 344, 34), // "on_xDotComboBox_currentTextCh..."
+QT_MOC_LITERAL(17, 379, 30), // "on_chartSettingsButton_clicked"
+QT_MOC_LITERAL(18, 410, 25), // "onDeviceConnectionChanged"
+QT_MOC_LITERAL(19, 436, 9), // "connected"
+QT_MOC_LITERAL(20, 446, 20), // "onDeviceDataReceived"
+QT_MOC_LITERAL(21, 467, 4), // "data"
+QT_MOC_LITERAL(22, 472, 13), // "onDeviceError"
+QT_MOC_LITERAL(23, 486, 5), // "error"
+QT_MOC_LITERAL(24, 492, 13), // "onUpdateTimer"
+QT_MOC_LITERAL(25, 506, 17) // "onDataUpdateTimer"
 
     },
     "MainWindow\0on_connectToggleButton_toggled\0"
@@ -65,8 +67,8 @@ QT_MOC_LITERAL(23, 483, 17) // "onDataUpdateTimer"
     "on_settingsButton_clicked\0"
     "on_darkModeButton_toggled\0"
     "on_menuButton_clicked\0on_filterButton_clicked\0"
-    "onCommandSettingsTriggered\0"
-    "on_xRangeComboBox_currentTextChanged\0"
+    "onCommandSettingsTriggered\0onProtocolChanged\0"
+    "name\0on_xRangeComboBox_currentTextChanged\0"
     "on_xDotComboBox_currentTextChanged\0"
     "on_chartSettingsButton_clicked\0"
     "onDeviceConnectionChanged\0connected\0"
@@ -81,7 +83,7 @@ static const uint qt_meta_data_MainWindow[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-      17,   14, // methods
+      18,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -89,23 +91,24 @@ static const uint qt_meta_data_MainWindow[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   99,    2, 0x08 /* Private */,
-       4,    1,  102,    2, 0x08 /* Private */,
-       6,    1,  105,    2, 0x08 /* Private */,
-       7,    1,  108,    2, 0x08 /* Private */,
-       8,    0,  111,    2, 0x08 /* Private */,
-       9,    1,  112,    2, 0x08 /* Private */,
-      10,    0,  115,    2, 0x08 /* Private */,
-      11,    0,  116,    2, 0x08 /* Private */,
-      12,    0,  117,    2, 0x08 /* Private */,
-      13,    1,  118,    2, 0x08 /* Private */,
-      14,    1,  121,    2, 0x08 /* Private */,
-      15,    0,  124,    2, 0x08 /* Private */,
-      16,    1,  125,    2, 0x08 /* Private */,
-      18,    1,  128,    2, 0x08 /* Private */,
-      20,    1,  131,    2, 0x08 /* Private */,
-      22,    0,  134,    2, 0x08 /* Private */,
-      23,    0,  135,    2, 0x08 /* Private */,
+       1,    1,  104,    2, 0x08 /* Private */,
+       4,    1,  107,    2, 0x08 /* Private */,
+       6,    1,  110,    2, 0x08 /* Private */,
+       7,    1,  113,    2, 0x08 /* Private */,
+       8,    0,  116,    2, 0x08 /* Private */,
+       9,    1,  117,    2, 0x08 /* Private */,
+      10,    0,  120,    2, 0x08 /* Private */,
+      11,    0,  121,    2, 0x08 /* Private */,
+      12,    0,  122,    2, 0x08 /* Private */,
+      13,    1,  123,    2, 0x08 /* Private */,
+      15,    1,  126,    2, 0x08 /* Private */,
+      16,    1,  129,    2, 0x08 /* Private */,
+      17,    0,  132,    2, 0x08 /* Private */,
+      18,    1,  133,    2, 0x08 /* Private */,
+      20,    1,  136,    2, 0x08 /* Private */,
+      22,    1,  139,    2, 0x08 /* Private */,
+      24,    0,  142,    2, 0x08 /* Private */,
+      25,    0,  143,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Bool,    3,
@@ -117,12 +120,13 @@ static const uint qt_meta_data_MainWindow[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
+    QMetaType::Void, QMetaType::QString,   14,
     QMetaType::Void, QMetaType::QString,    5,
     QMetaType::Void, QMetaType::QString,    5,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Bool,   17,
-    QMetaType::Void, QMetaType::QByteArray,   19,
-    QMetaType::Void, QMetaType::QString,   21,
+    QMetaType::Void, QMetaType::Bool,   19,
+    QMetaType::Void, QMetaType::QByteArray,   21,
+    QMetaType::Void, QMetaType::QString,   23,
     QMetaType::Void,
     QMetaType::Void,
 
@@ -144,14 +148,15 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 6: _t->on_menuButton_clicked(); break;
         case 7: _t->on_filterButton_clicked(); break;
         case 8: _t->onCommandSettingsTriggered(); break;
-        case 9: _t->on_xRangeComboBox_currentTextChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 10: _t->on_xDotComboBox_currentTextChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 11: _t->on_chartSettingsButton_clicked(); break;
-        case 12: _t->onDeviceConnectionChanged((*reinterpret_cast< bool(*)>(_a[1]))); break;
-        case 13: _t->onDeviceDataReceived((*reinterpret_cast< const QByteArray(*)>(_a[1]))); break;
-        case 14: _t->onDeviceError((*reinterpret_cast< const QString(*)>(_a[1]))); break;
-        case 15: _t->onUpdateTimer(); break;
-        case 16: _t->onDataUpdateTimer(); break;
+        case 9: _t->onProtocolChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 10: _t->on_xRangeComboBox_currentTextChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 11: _t->on_xDotComboBox_currentTextChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 12: _t->on_chartSettingsButton_clicked(); break;
+        case 13: _t->onDeviceConnectionChanged((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 14: _t->onDeviceDataReceived((*reinterpret_cast< const QByteArray(*)>(_a[1]))); break;
+        case 15: _t->onDeviceError((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 16: _t->onUpdateTimer(); break;
+        case 17: _t->onDataUpdateTimer(); break;
         default: ;
         }
     }
@@ -186,13 +191,13 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 17)
+        if (_id < 18)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 17;
+        _id -= 18;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 17)
+        if (_id < 18)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 17;
+        _id -= 18;
     }
     return _id;
 }

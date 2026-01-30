@@ -1,6 +1,8 @@
 #include "basicplot.h"
 #include <QPaintEvent>
 #include <QtMath>
+#include <QPalette>
+#include <QApplication>
 
 BasicPlot::BasicPlot(QWidget *parent)
     : QWidget(parent)
@@ -88,8 +90,8 @@ void BasicPlot::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // 绘制背景
-    painter.fillRect(rect(), Qt::white);
+    // 绘制背景 - 使用动态颜色
+    painter.fillRect(rect(), getBackgroundColor());
 
     // 绘制标题
     drawTitle(painter);
@@ -122,7 +124,7 @@ void BasicPlot::drawAxes(QPainter &painter)
     int plotWidth = width() - 2 * margin;
     int plotHeight = height() - 2 * margin;
 
-    painter.setPen(QPen(Qt::black, 2));
+    painter.setPen(QPen(getAxisColor(), 2));
 
     // X 轴
     painter.drawLine(margin, height() - margin, width() - margin, height() - margin);
@@ -132,6 +134,7 @@ void BasicPlot::drawAxes(QPainter &painter)
 
     // 轴标签
     painter.setFont(QFont("Arial", 10));
+    painter.setPen(getTextColor());
     painter.drawText(width() / 2 - 50, height() - 10, m_xLabel);
     painter.save();
     painter.translate(10, height() / 2 + 50);
@@ -147,6 +150,7 @@ void BasicPlot::drawTitle(QPainter &painter)
     }
 
     painter.setFont(QFont("Arial", 12, QFont::Bold));
+    painter.setPen(getTextColor());
     painter.drawText(rect(), Qt::AlignTop | Qt::AlignHCenter, m_title);
 }
 
@@ -156,7 +160,7 @@ void BasicPlot::drawGrid(QPainter &painter)
     int plotWidth = width() - 2 * margin;
     int plotHeight = height() - 2 * margin;
 
-    painter.setPen(QPen(Qt::lightGray, 1, Qt::DotLine));
+    painter.setPen(QPen(getGridColor(), 1, Qt::DotLine));
 
     // 水平网格线
     for (int i = 1; i < 5; ++i) {
@@ -168,5 +172,55 @@ void BasicPlot::drawGrid(QPainter &painter)
     for (int i = 1; i < 5; ++i) {
         int x = margin + i * plotWidth / 5;
         painter.drawLine(x, margin, x, height() - margin);
+    }
+}
+
+QColor BasicPlot::getBackgroundColor() const
+{
+    // 检测当前主题 - 通过窗口背景色判断
+    QPalette pal = QApplication::palette();
+    QColor bgColor = pal.color(QPalette::Window);
+
+    // 如果背景是深色，返回深色图表背景
+    if (bgColor.lightness() < 128) {
+        return QColor(0x1E, 0x1E, 0x1E); // 深色主题背景
+    } else {
+        return QColor(0xF5, 0xF5, 0xF5); // 浅色主题背景
+    }
+}
+
+QColor BasicPlot::getTextColor() const
+{
+    QPalette pal = QApplication::palette();
+    QColor bgColor = pal.color(QPalette::Window);
+
+    if (bgColor.lightness() < 128) {
+        return QColor(0xD4, 0xD4, 0xD4); // 深色主题文本
+    } else {
+        return QColor(0x21, 0x21, 0x21); // 浅色主题文本
+    }
+}
+
+QColor BasicPlot::getGridColor() const
+{
+    QPalette pal = QApplication::palette();
+    QColor bgColor = pal.color(QPalette::Window);
+
+    if (bgColor.lightness() < 128) {
+        return QColor(0x3A, 0x3A, 0x3A); // 深色主题网格线
+    } else {
+        return QColor(0xE0, 0xE0, 0xE0); // 浅色主题网格线
+    }
+}
+
+QColor BasicPlot::getAxisColor() const
+{
+    QPalette pal = QApplication::palette();
+    QColor bgColor = pal.color(QPalette::Window);
+
+    if (bgColor.lightness() < 128) {
+        return QColor(0xA0, 0xA0, 0xA0); // 深色主题坐标轴
+    } else {
+        return QColor(0x42, 0x42, 0x42); // 浅色主题坐标轴
     }
 }

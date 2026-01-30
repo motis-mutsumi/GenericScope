@@ -91,7 +91,7 @@ void HistogramPlot::drawPlot(QPainter &painter)
     double barWidth = (double)plotWidth / m_binCount;
 
     // 绘制柱状图
-    painter.setPen(Qt::black);
+    painter.setPen(getTextColor());
     painter.setBrush(m_barColor);
 
     for (int i = 0; i < m_binCount; ++i) {
@@ -103,7 +103,7 @@ void HistogramPlot::drawPlot(QPainter &painter)
     }
 
     // 绘制刻度值
-    painter.setPen(Qt::black);
+    painter.setPen(getTextColor());
     painter.setFont(QFont("Arial", 8));
 
     // Y 轴刻度（频数）

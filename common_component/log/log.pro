@@ -14,5 +14,8 @@ SOURCES += \
     logmanager.cpp \
     logwidget.cpp
 
+FORMS += \
+    logwidget.ui
+
 # spdlog 支持（如果使用）
 # INCLUDEPATH += ../../libs/spdlog/include

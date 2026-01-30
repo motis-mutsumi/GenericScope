@@ -2,7 +2,9 @@
 #include "ui_mainwindow.h"
 #include "config/config.h"
 #include "commandsettingsdialog.h"
+#include "deviceconfigdialog.h"
 #include "common_component/log/logmanager.h"
+#include "protocol/protocolmanager.h"
 #include <QMessageBox>
 #include <QDateTime>
 #include <QSerialPortInfo>
@@ -74,6 +76,9 @@ void MainWindow::setupUI()
     // 设置图表
     setupChart();
 
+    // 设置日志窗口
+    setupLogWidget();
+
     // 设置初始值
     ui->xRangeComboBox->setCurrentText("60");
     ui->xDotComboBox->setCurrentText("2");
@@ -108,6 +113,13 @@ void MainWindow::setupConnections()
     ok &= static_cast<bool>(connect(m_dataTimer, &QTimer::timeout, this, &MainWindow::onDataUpdateTimer));
     ok &= static_cast<bool>(connect(m_timeDisplayTimer, &QTimer::timeout, this, &MainWindow::updateTimeDisplay));
     Q_ASSERT(ok && "Failed to connect timer signals");
+
+    // 连接协议管理器信号（使用队列连接避免死锁）
+    if (ProtocolManager::instance()) {
+        ok = static_cast<bool>(connect(ProtocolManager::instance(), &ProtocolManager::currentProtocolChanged,
+                                        this, &MainWindow::onProtocolChanged, Qt::QueuedConnection));
+        Q_ASSERT(ok && "Failed to connect protocol manager signals");
+    }
 }
 
 void MainWindow::setupMenu()
@@ -116,7 +128,9 @@ void MainWindow::setupMenu()
     m_settingsMenu->addAction("指令设置", this, &MainWindow::onCommandSettingsTriggered);
     m_settingsMenu->addSeparator();
     m_settingsMenu->addAction("设备配置", this, [this]() {
-        QMessageBox::information(this, "设备配置", "设备配置功能待实现");
+        // 打开设备配置对话框
+        DeviceConfigDialog dialog(m_deviceManager, this);
+        dialog.exec();
     });
     m_settingsMenu->addAction("显示选项", this, [this]() {
         QMessageBox::information(this, "显示选项", "显示选项功能待实现");
@@ -193,21 +207,91 @@ void MainWindow::setupDataTable()
     ui->dataTableWidget->setColumnWidth(kDataTableValueColumn, 80);
     ui->dataTableWidget->setColumnWidth(kDataTableUnitColumn, 50);
 
-    // 添加初始数据行
-    QStringList messages = {QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
-                           QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
-                           QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
-                           QStringLiteral("Temperature")};
+    // 尝试从当前协议加载字段，否则使用默认字段
+    rebuildDataTableFromProtocol();
+}
 
-    for (int i = 0; i < messages.size(); ++i) {
-        int row = ui->dataTableWidget->rowCount();
-        ui->dataTableWidget->insertRow(row);
+void MainWindow::rebuildDataTableFromProtocol()
+{
+    LOG_INFO("Starting rebuildDataTableFromProtocol");
 
-        ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(messages[i]));
-        ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
-        ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
+    // 清空现有行
+    ui->dataTableWidget->setRowCount(0);
+    m_tableRowMap.clear();
 
-        m_tableRowMap[messages[i]] = row;
+    // 添加空指针检查
+    if (!ProtocolManager::instance()) {
+        LOG_INFO("ProtocolManager not initialized, using default IMU fields");
+        // 使用默认字段
+        QStringList messages = {QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
+                               QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
+                               QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
+                               QStringLiteral("Temperature")};
+
+        for (int i = 0; i < messages.size(); ++i) {
+            int row = ui->dataTableWidget->rowCount();
+            ui->dataTableWidget->insertRow(row);
+
+            ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(messages[i]));
+            ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
+            ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
+
+            m_tableRowMap[messages[i]] = row;
+        }
+        return;
+    }
+
+    // 获取当前协议
+    QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
+
+    if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
+        // 从协议配置获取字段
+        ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
+
+        LOG_INFO(QString("Rebuilding data table from protocol: %1 with %2 fields")
+                     .arg(currentProtocol)
+                     .arg(config.fields.size()));
+
+        for (const FieldConfig &field : config.fields) {
+            int row = ui->dataTableWidget->rowCount();
+            ui->dataTableWidget->insertRow(row);
+
+            // 字段名称
+            ui->dataTableWidget->setItem(row, kDataTableMessageColumn,
+                                         new QTableWidgetItem(field.name));
+            // 初始值
+            ui->dataTableWidget->setItem(row, kDataTableValueColumn,
+                                         new QTableWidgetItem(QStringLiteral("-")));
+            // 单位
+            ui->dataTableWidget->setItem(row, kDataTableUnitColumn,
+                                         new QTableWidgetItem(field.unit));
+
+            // 建立字段名称到行号的映射
+            m_tableRowMap[field.name] = row;
+        }
+
+        statusBar()->showMessage(QString("已加载协议 %1 的 %2 个字段")
+                                     .arg(currentProtocol)
+                                     .arg(config.fields.size()), 3000);
+    } else {
+        // 使用默认字段（IMU数据）
+        LOG_INFO("No protocol configured, using default IMU fields");
+
+        QStringList messages = {QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
+                               QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
+                               QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
+                               QStringLiteral("Temperature")};
+
+        for (int i = 0; i < messages.size(); ++i) {
+            int row = ui->dataTableWidget->rowCount();
+            ui->dataTableWidget->insertRow(row);
+
+            ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(messages[i]));
+            ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
+            ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
+
+            m_tableRowMap[messages[i]] = row;
+        }
     }
 }
 
@@ -244,6 +328,26 @@ void MainWindow::setupChart()
     QVBoxLayout *layout = new QVBoxLayout(ui->chartContainer);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(m_linePlot);
+}
+
+void MainWindow::setupLogWidget()
+{
+    // 创建日志窗口
+    m_logWidget = new LogWidget(this);
+    m_logWidget->setMinimumHeight(150);
+    m_logWidget->setMaximumHeight(250);
+
+    // 设置初始主题
+    m_logWidget->setTheme(m_isDarkMode);
+
+    // 将日志窗口添加到主布局的底部
+    QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout*>(ui->centralwidget->layout());
+    if (mainLayout) {
+        mainLayout->addWidget(m_logWidget);
+    }
+
+    // 添加初始日志
+    LogManager::instance()->info("GenericScope started");
 }
 
 void MainWindow::refreshAvailablePorts()
@@ -367,6 +471,28 @@ void MainWindow::on_settingsButton_clicked()
 void MainWindow::on_darkModeButton_toggled(bool checked)
 {
     loadStyleSheet(checked);
+
+    // 更新日志窗口主题
+    if (m_logWidget) {
+        m_logWidget->setTheme(checked);
+    }
+
+    // 更新3D视图背景色
+    if (m_3dView) {
+        QPalette pal = QApplication::palette();
+        QColor bgColor = pal.color(QPalette::Window);
+        if (bgColor.lightness() < 128) {
+            m_3dView->setBackgroundColor(QColor(0x1E, 0x1E, 0x1E)); // 深色主题
+        } else {
+            m_3dView->setBackgroundColor(QColor(0xF5, 0xF5, 0xF5)); // 浅色主题
+        }
+    }
+
+    // 强制刷新所有图表组件以应用新颜色
+    if (m_linePlot) {
+        m_linePlot->update();
+    }
+
     LOG_INFO(QString("Dark mode: %1").arg(checked ? "ON" : "OFF"));
 }
 
@@ -377,7 +503,28 @@ void MainWindow::onCommandSettingsTriggered()
     if (dialog.exec() == QDialog::Accepted) {
         LOG_INFO("Command settings saved");
         statusBar()->showMessage("指令设置已保存", 3000);
+
+        // 同步协议字段到数据表格
+        rebuildDataTableFromProtocol();
     }
+}
+
+void MainWindow::onProtocolChanged(const QString &name)
+{
+    LOG_INFO(QString("Protocol changed to: %1").arg(name));
+
+    // 防止空协议名导致的问题
+    if (name.isEmpty()) {
+        LOG_INFO("Protocol name is empty, skipping rebuild");
+        return;
+    }
+
+    // 重建数据表格以反映新的协议字段
+    rebuildDataTableFromProtocol();
+
+    statusBar()->showMessage(QString("已切换到协议: %1").arg(name), 3000);
+
+    LOG_INFO("Data table rebuild completed");
 }
 
 void MainWindow::on_menuButton_clicked()

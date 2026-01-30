@@ -84,6 +84,12 @@ protected:
     void drawTitle(QPainter &painter);
     void drawGrid(QPainter &painter);
 
+    // 主题相关颜色获取方法
+    QColor getBackgroundColor() const;
+    QColor getTextColor() const;
+    QColor getGridColor() const;
+    QColor getAxisColor() const;
+
 protected:
     QVector<double> m_xData;
     QVector<double> m_yData;

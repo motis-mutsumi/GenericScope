@@ -10,6 +10,7 @@ LIBS += -lalgorithm -lutil -lprotocol -ltransfer -lplot -llog -lrecord -lcore_pl
 HEADERS += \
     ui/mainwindow.h \
     ui/commandsettingsdialog.h \
+    ui/deviceconfigdialog.h \
     ui/newprotocoldialog.h \
     ui/protocoltypeconverter.h \
     ui/protocoltestdialog.h \
@@ -24,6 +25,7 @@ SOURCES += \
     main.cpp \
     ui/mainwindow.cpp \
     ui/commandsettingsdialog.cpp \
+    ui/deviceconfigdialog.cpp \
     ui/newprotocoldialog.cpp \
     ui/protocoltypeconverter.cpp \
     ui/protocoltestdialog.cpp \
@@ -35,7 +37,8 @@ SOURCES += \
     device/devicemanager.cpp
 
 FORMS += \
-    ui/mainwindow.ui
+    ui/mainwindow.ui \
+    ui/deviceconfigdialog.ui
 
 RESOURCES += \
     resources.qrc

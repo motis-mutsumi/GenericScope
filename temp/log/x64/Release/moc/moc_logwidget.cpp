@@ -22,8 +22,8 @@ QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_LogWidget_t {
-    QByteArrayData data[10];
-    char stringdata0[97];
+    QByteArrayData data[17];
+    char stringdata0[184];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -40,13 +40,22 @@ QT_MOC_LITERAL(4, 39, 5), // "level"
 QT_MOC_LITERAL(5, 45, 7), // "message"
 QT_MOC_LITERAL(6, 53, 8), // "clearLog"
 QT_MOC_LITERAL(7, 62, 7), // "saveLog"
-QT_MOC_LITERAL(8, 70, 20), // "onLevelFilterChanged"
-QT_MOC_LITERAL(9, 91, 5) // "index"
+QT_MOC_LITERAL(8, 70, 8), // "setTheme"
+QT_MOC_LITERAL(9, 79, 10), // "isDarkMode"
+QT_MOC_LITERAL(10, 90, 20), // "onLevelFilterChanged"
+QT_MOC_LITERAL(11, 111, 5), // "index"
+QT_MOC_LITERAL(12, 117, 19), // "onSearchTextChanged"
+QT_MOC_LITERAL(13, 137, 4), // "text"
+QT_MOC_LITERAL(14, 142, 22), // "onCaseSensitiveChanged"
+QT_MOC_LITERAL(15, 165, 5), // "state"
+QT_MOC_LITERAL(16, 171, 12) // "applyFilters"
 
     },
     "LogWidget\0addLog\0\0LogManager::LogLevel\0"
-    "level\0message\0clearLog\0saveLog\0"
-    "onLevelFilterChanged\0index"
+    "level\0message\0clearLog\0saveLog\0setTheme\0"
+    "isDarkMode\0onLevelFilterChanged\0index\0"
+    "onSearchTextChanged\0text\0"
+    "onCaseSensitiveChanged\0state\0applyFilters"
 };
 #undef QT_MOC_LITERAL
 
@@ -56,7 +65,7 @@ static const uint qt_meta_data_LogWidget[] = {
        8,       // revision
        0,       // classname
        0,    0, // classinfo
-       4,   14, // methods
+       8,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -64,16 +73,24 @@ static const uint qt_meta_data_LogWidget[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    2,   34,    2, 0x0a /* Public */,
-       6,    0,   39,    2, 0x0a /* Public */,
-       7,    0,   40,    2, 0x0a /* Public */,
-       8,    1,   41,    2, 0x08 /* Private */,
+       1,    2,   54,    2, 0x0a /* Public */,
+       6,    0,   59,    2, 0x0a /* Public */,
+       7,    0,   60,    2, 0x0a /* Public */,
+       8,    1,   61,    2, 0x0a /* Public */,
+      10,    1,   64,    2, 0x08 /* Private */,
+      12,    1,   67,    2, 0x08 /* Private */,
+      14,    1,   70,    2, 0x08 /* Private */,
+      16,    0,   73,    2, 0x08 /* Private */,
 
  // slots: parameters
     QMetaType::Void, 0x80000000 | 3, QMetaType::QString,    4,    5,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void, QMetaType::Int,    9,
+    QMetaType::Void, QMetaType::Bool,    9,
+    QMetaType::Void, QMetaType::Int,   11,
+    QMetaType::Void, QMetaType::QString,   13,
+    QMetaType::Void, QMetaType::Int,   15,
+    QMetaType::Void,
 
        0        // eod
 };
@@ -87,7 +104,11 @@ void LogWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
         case 0: _t->addLog((*reinterpret_cast< LogManager::LogLevel(*)>(_a[1])),(*reinterpret_cast< const QString(*)>(_a[2]))); break;
         case 1: _t->clearLog(); break;
         case 2: _t->saveLog(); break;
-        case 3: _t->onLevelFilterChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 3: _t->setTheme((*reinterpret_cast< bool(*)>(_a[1]))); break;
+        case 4: _t->onLevelFilterChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 5: _t->onSearchTextChanged((*reinterpret_cast< const QString(*)>(_a[1]))); break;
+        case 6: _t->onCaseSensitiveChanged((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 7: _t->applyFilters(); break;
         default: ;
         }
     }
@@ -122,13 +143,13 @@ int LogWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 4)
+        if (_id < 8)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 4;
+        _id -= 8;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 4)
+        if (_id < 8)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 4;
+        _id -= 8;
     }
     return _id;
 }

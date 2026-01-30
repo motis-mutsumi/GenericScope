@@ -2,10 +2,11 @@
 #define LOGWIDGET_H
 
 #include <QWidget>
-#include <QTextEdit>
-#include <QComboBox>
-#include <QPushButton>
 #include "logmanager.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class LogWidget; }
+QT_END_NAMESPACE
 
 /**
  * @brief 日志显示部件
@@ -38,19 +39,35 @@ public slots:
      */
     void saveLog();
 
+    /**
+     * @brief 设置主题
+     * @param isDarkMode 是否为暗色模式
+     */
+    void setTheme(bool isDarkMode);
+
 private slots:
     void onLevelFilterChanged(int index);
+    void onSearchTextChanged(const QString &text);
+    void onCaseSensitiveChanged(int state);
+    void applyFilters();
 
 private:
-    void setupUI();
     QString getColorForLevel(LogManager::LogLevel level);
+    bool matchesFilter(LogManager::LogLevel level, const QString &message);
 
 private:
-    QTextEdit *m_logTextEdit;
-    QComboBox *m_levelFilter;
-    QPushButton *m_clearButton;
-    QPushButton *m_saveButton;
+    Ui::LogWidget *ui;
     LogManager::LogLevel m_currentFilter;
+    bool m_isDarkMode;
+    QString m_searchText;
+    bool m_caseSensitive;
+
+    struct LogEntry {
+        LogManager::LogLevel level;
+        QString message;
+        QString plainMessage;  // 不带HTML标签的纯文本
+    };
+    QVector<LogEntry> m_allLogs;
 };
 
 #endif // LOGWIDGET_H

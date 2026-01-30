@@ -7,6 +7,8 @@
 #include <Qt3DExtras/QForwardRenderer>
 #include <Qt3DRender/QPointLight>
 #include <QVBoxLayout>
+#include <QApplication>
+#include <QPalette>
 
 IMU3DView::IMU3DView(QWidget *parent)
     : QWidget(parent)
@@ -22,7 +24,15 @@ IMU3DView::IMU3DView(QWidget *parent)
 {
     // 创建Qt3D窗口（QWindow对象，无法设置父对象）
     m_view = new Qt3DExtras::Qt3DWindow();
-    m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0x1e1e1e)));
+
+    // 根据当前主题设置背景颜色
+    QPalette pal = QApplication::palette();
+    QColor bgColor = pal.color(QPalette::Window);
+    if (bgColor.lightness() < 128) {
+        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0x1e1e1e))); // 深色主题
+    } else {
+        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0xF5F5F5))); // 浅色主题
+    }
 
     // 将Qt3D窗口嵌入到QWidget容器
     m_container = QWidget::createWindowContainer(m_view, this);
@@ -208,5 +218,12 @@ void IMU3DView::resetCamera()
     if (m_camera) {
         m_camera->setPosition(QVector3D(0, 5, 10));
         m_camera->setViewCenter(QVector3D(0, 0, 0));
+    }
+}
+
+void IMU3DView::setBackgroundColor(const QColor &color)
+{
+    if (m_view) {
+        m_view->defaultFrameGraph()->setClearColor(color);
     }
 }

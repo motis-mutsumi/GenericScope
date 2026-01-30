@@ -1,0 +1,9 @@
+[2026-01-30 10:41:07.251] [INFO] Log system initialized
+[2026-01-30 10:41:08.430] [INFO] GenericScope started
+[2026-01-30 10:41:08.544] [INFO] Loaded 2 plugins
+[2026-01-30 10:41:08.788] [INFO] GenericScope started
+[2026-01-30 10:41:17.770] [INFO] Dark mode: ON
+[2026-01-30 10:41:18.621] [INFO] Dark mode: OFF
+[2026-01-30 10:41:19.337] [INFO] Dark mode: ON
+[2026-01-30 10:41:19.635] [INFO] Dark mode: OFF
+[2026-01-30 10:44:09.205] [INFO] GenericScope stopped

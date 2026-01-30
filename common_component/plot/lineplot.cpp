@@ -86,7 +86,7 @@ void LinePlot::drawPlot(QPainter &painter)
     }
 
     // 绘制刻度值
-    painter.setPen(Qt::black);
+    painter.setPen(getTextColor());
     painter.setFont(QFont("Arial", 8));
 
     // Y 轴刻度
