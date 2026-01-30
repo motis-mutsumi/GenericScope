@@ -1,6 +1,0 @@
-[2026-01-30 14:06:40.488] [INFO] Log system initialized
-[2026-01-30 14:06:41.079] [INFO] No protocol configured, using default IMU fields
-[2026-01-30 14:06:41.263] [INFO] GenericScope started
-[2026-01-30 14:06:41.415] [INFO] Loaded 2 plugins
-[2026-01-30 14:06:41.610] [INFO] GenericScope started
-[2026-01-30 14:06:44.237] [INFO] Protocol changed to: Generated_Protocol

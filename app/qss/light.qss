@@ -32,7 +32,6 @@ QWidget {
     font-family: "Segoe UI", "Microsoft YaHei UI", "微软雅黑", sans-serif;
     font-size: 9pt;
     color: #212121;
-    background-color: transparent;
 }
 
 /* ========== 标题栏 ========== */

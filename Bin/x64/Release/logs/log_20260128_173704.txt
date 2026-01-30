@@ -1,4 +1,0 @@
-[2026-01-28 17:37:04.632] [INFO] Log system initialized
-[2026-01-28 17:37:05.513] [INFO] Loaded 0 plugins
-[2026-01-28 17:37:05.934] [INFO] GenericScope started
-[2026-01-28 17:38:36.826] [INFO] GenericScope stopped

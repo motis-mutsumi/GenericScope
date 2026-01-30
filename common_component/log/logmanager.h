@@ -60,6 +60,12 @@ public:
     void error(const QString &message) { log(Error, message); }
     void critical(const QString &message) { log(Critical, message); }
 
+    /**
+     * @brief 清除所有日志文件
+     * @return 成功删除的文件数量
+     */
+    int clearLogFiles();
+
 signals:
     /**
      * @brief 日志消息信号
@@ -82,6 +88,7 @@ private:
     LogLevel m_logLevel;
     bool m_logToFile;
     bool m_logToConsole;
+    QString m_logDir;
     QFile *m_logFile;
     QTextStream *m_logStream;
     QMutex m_mutex;

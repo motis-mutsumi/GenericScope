@@ -3,6 +3,7 @@
 #include <QFileDialog>
 #include <QFile>
 #include <QTextStream>
+#include <QMessageBox>
 
 LogWidget::LogWidget(QWidget *parent)
     : QWidget(parent)
@@ -34,6 +35,7 @@ LogWidget::LogWidget(QWidget *parent)
     connect(ui->caseSensitiveCheck, &QCheckBox::stateChanged,
             this, &LogWidget::onCaseSensitiveChanged);
     connect(ui->clearButton, &QPushButton::clicked, this, &LogWidget::clearLog);
+    connect(ui->clearFilesButton, &QPushButton::clicked, this, &LogWidget::clearLogFiles);
     connect(ui->saveButton, &QPushButton::clicked, this, &LogWidget::saveLog);
 
     // 连接日志管理器
@@ -77,9 +79,9 @@ void LogWidget::clearLog()
 void LogWidget::saveLog()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
-                                                    "Save Log",
+                                                    "保存日志",
                                                     "",
-                                                    "Text Files (*.txt);;All Files (*)");
+                                                    "文本文件 (*.txt);;所有文件 (*)");
     if (fileName.isEmpty()) {
         return;
     }
@@ -89,6 +91,28 @@ void LogWidget::saveLog()
         QTextStream stream(&file);
         stream << ui->logTextEdit->toPlainText();
         file.close();
+    }
+}
+
+void LogWidget::clearLogFiles()
+{
+    QMessageBox msgBox(this);
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setWindowTitle("清除日志文件");
+    msgBox.setText("确定要删除磁盘上的所有日志文件吗？");
+    msgBox.setInformativeText("此操作无法撤销。");
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+
+    if (msgBox.exec() == QMessageBox::Yes) {
+        int deletedCount = LogManager::instance()->clearLogFiles();
+
+        // 同时清空UI显示
+        clearLog();
+
+        // 显示删除结果
+        QMessageBox::information(this, "清除日志文件",
+                                QString("成功删除 %1 个日志文件。").arg(deletedCount));
     }
 }
 

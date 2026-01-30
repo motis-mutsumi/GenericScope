@@ -1,7 +1,0 @@
-[2026-01-30 15:16:46.050] [INFO] Log system initialized
-[2026-01-30 15:16:46.658] [INFO] Starting rebuildDataTableFromProtocol
-[2026-01-30 15:16:46.658] [INFO] No protocol configured, using default IMU fields
-[2026-01-30 15:16:46.871] [INFO] GenericScope started
-[2026-01-30 15:16:46.982] [INFO] Loaded 2 plugins
-[2026-01-30 15:16:47.254] [INFO] GenericScope started
-[2026-01-30 15:17:17.472] [INFO] GenericScope stopped

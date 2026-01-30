@@ -36,6 +36,7 @@ public:
     QCheckBox *caseSensitiveCheck;
     QSpacerItem *toolSpacer;
     QPushButton *clearButton;
+    QPushButton *clearFilesButton;
     QPushButton *saveButton;
     QTextEdit *logTextEdit;
 
@@ -94,6 +95,11 @@ public:
 
         toolLayout->addWidget(clearButton);
 
+        clearFilesButton = new QPushButton(LogWidget);
+        clearFilesButton->setObjectName(QString::fromUtf8("clearFilesButton"));
+
+        toolLayout->addWidget(clearFilesButton);
+
         saveButton = new QPushButton(LogWidget);
         saveButton->setObjectName(QString::fromUtf8("saveButton"));
 
@@ -120,19 +126,26 @@ public:
 
     void retranslateUi(QWidget *LogWidget)
     {
-        levelLabel->setText(QCoreApplication::translate("LogWidget", "Level:", nullptr));
-        levelFilter->setItemText(0, QCoreApplication::translate("LogWidget", "All", nullptr));
-        levelFilter->setItemText(1, QCoreApplication::translate("LogWidget", "Debug", nullptr));
-        levelFilter->setItemText(2, QCoreApplication::translate("LogWidget", "Info", nullptr));
-        levelFilter->setItemText(3, QCoreApplication::translate("LogWidget", "Warning", nullptr));
-        levelFilter->setItemText(4, QCoreApplication::translate("LogWidget", "Error", nullptr));
-        levelFilter->setItemText(5, QCoreApplication::translate("LogWidget", "Critical", nullptr));
+        levelLabel->setText(QCoreApplication::translate("LogWidget", "\347\272\247\345\210\253:", nullptr));
+        levelFilter->setItemText(0, QCoreApplication::translate("LogWidget", "\345\205\250\351\203\250", nullptr));
+        levelFilter->setItemText(1, QCoreApplication::translate("LogWidget", "\350\260\203\350\257\225", nullptr));
+        levelFilter->setItemText(2, QCoreApplication::translate("LogWidget", "\344\277\241\346\201\257", nullptr));
+        levelFilter->setItemText(3, QCoreApplication::translate("LogWidget", "\350\255\246\345\221\212", nullptr));
+        levelFilter->setItemText(4, QCoreApplication::translate("LogWidget", "\351\224\231\350\257\257", nullptr));
+        levelFilter->setItemText(5, QCoreApplication::translate("LogWidget", "\344\270\245\351\207\215", nullptr));
 
-        searchLabel->setText(QCoreApplication::translate("LogWidget", "Search:", nullptr));
-        searchEdit->setPlaceholderText(QCoreApplication::translate("LogWidget", "Filter by keyword...", nullptr));
-        caseSensitiveCheck->setText(QCoreApplication::translate("LogWidget", "Case Sensitive", nullptr));
-        clearButton->setText(QCoreApplication::translate("LogWidget", "Clear", nullptr));
-        saveButton->setText(QCoreApplication::translate("LogWidget", "Save", nullptr));
+        searchLabel->setText(QCoreApplication::translate("LogWidget", "\346\220\234\347\264\242:", nullptr));
+        searchEdit->setPlaceholderText(QCoreApplication::translate("LogWidget", "\346\214\211\345\205\263\351\224\256\350\257\215\350\277\207\346\273\244...", nullptr));
+        caseSensitiveCheck->setText(QCoreApplication::translate("LogWidget", "\345\214\272\345\210\206\345\244\247\345\260\217\345\206\231", nullptr));
+        clearButton->setText(QCoreApplication::translate("LogWidget", "\346\270\205\347\251\272", nullptr));
+#if QT_CONFIG(tooltip)
+        clearButton->setToolTip(QCoreApplication::translate("LogWidget", "\344\273\205\346\270\205\347\251\272\346\230\276\347\244\272", nullptr));
+#endif // QT_CONFIG(tooltip)
+        clearFilesButton->setText(QCoreApplication::translate("LogWidget", "\346\270\205\351\231\244\346\226\207\344\273\266", nullptr));
+#if QT_CONFIG(tooltip)
+        clearFilesButton->setToolTip(QCoreApplication::translate("LogWidget", "\345\210\240\351\231\244\347\243\201\347\233\230\344\270\212\347\232\204\346\211\200\346\234\211\346\227\245\345\277\227\346\226\207\344\273\266", nullptr));
+#endif // QT_CONFIG(tooltip)
+        saveButton->setText(QCoreApplication::translate("LogWidget", "\344\277\235\345\255\230", nullptr));
         (void)LogWidget;
     } // retranslateUi
 

@@ -40,6 +40,11 @@ public slots:
     void saveLog();
 
     /**
+     * @brief 清除磁盘上的所有日志文件
+     */
+    void clearLogFiles();
+
+    /**
      * @brief 设置主题
      * @param isDarkMode 是否为暗色模式
      */
