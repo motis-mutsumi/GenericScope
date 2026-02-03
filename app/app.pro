@@ -38,7 +38,11 @@ SOURCES += \
 
 FORMS += \
     ui/mainwindow.ui \
-    ui/deviceconfigdialog.ui
+    ui/deviceconfigdialog.ui \
+    ui/commandsettingsdialog.ui \
+    ui/aiprotocolinputdialog.ui \
+    ui/newprotocoldialog.ui \
+    ui/protocoltestdialog.ui
 
 RESOURCES += \
     resources.qrc

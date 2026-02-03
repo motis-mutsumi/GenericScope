@@ -1,101 +1,31 @@
 #include "newprotocoldialog.h"
+#include "ui_newprotocoldialog.h"
 #include "aiprotocolinputdialog.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFormLayout>
-#include <QGroupBox>
-#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
 
 NewProtocolDialog::NewProtocolDialog(QWidget *parent)
     : QDialog(parent)
+    , ui(new Ui::NewProtocolDialog)
 {
+    ui->setupUi(this);
     setupUI();
     setupConnections();
 }
 
 NewProtocolDialog::~NewProtocolDialog()
 {
+    delete ui;
 }
 
 void NewProtocolDialog::setupUI()
 {
-    setWindowTitle("新建协议向导");
-    resize(600, 500);
-
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(10);
-    mainLayout->setContentsMargins(15, 15, 15, 15);
-
-    // ========== 基本信息组 ==========
-    QGroupBox *infoGroup = new QGroupBox("协议基本信息", this);
-    QFormLayout *infoLayout = new QFormLayout(infoGroup);
-
-    m_nameEdit = new QLineEdit(this);
-    m_nameEdit->setPlaceholderText("例如: IMU_Protocol_V1");
-    infoLayout->addRow("协议名称*:", m_nameEdit);
-
-    m_versionEdit = new QLineEdit(this);
-    m_versionEdit->setText("1.0.0");
-    m_versionEdit->setPlaceholderText("例如: 1.0.0");
-    infoLayout->addRow("协议版本:", m_versionEdit);
-
-    m_descriptionEdit = new QTextEdit(this);
-    m_descriptionEdit->setPlaceholderText("输入协议描述...");
-    m_descriptionEdit->setMaximumHeight(80);
-    infoLayout->addRow("协议描述:", m_descriptionEdit);
-
-    mainLayout->addWidget(infoGroup);
-
-    // ========== 协议模板组 ==========
-    QGroupBox *templateGroup = new QGroupBox("协议模板", this);
-    QVBoxLayout *templateLayout = new QVBoxLayout(templateGroup);
-
-    QHBoxLayout *templateSelectLayout = new QHBoxLayout();
-    QLabel *templateLabel = new QLabel("选择模板:", this);
-    m_templateCombo = new QComboBox(this);
-    m_templateCombo->addItem("空协议");
-    m_templateCombo->addItem("基础串口协议");
-    m_templateCombo->addItem("MODBUS RTU协议");
-    m_templateCombo->addItem("自定义IMU协议");
-    m_templateCombo->addItem("文本CSV协议");
-    m_templateCombo->addItem("🤖 AI智能生成");  // 新增AI生成选项
-    templateSelectLayout->addWidget(templateLabel);
-    templateSelectLayout->addWidget(m_templateCombo, 1);
-    templateLayout->addLayout(templateSelectLayout);
-
-    // 模板描述
-    m_templateDescEdit = new QTextEdit(this);
-    m_templateDescEdit->setReadOnly(true);
-    m_templateDescEdit->setMaximumHeight(120);
-    templateLayout->addWidget(m_templateDescEdit);
-
-    // 添加默认字段选项
-    m_addDefaultFieldsCheck = new QCheckBox("添加默认数据字段（适用于选定模板）", this);
-    m_addDefaultFieldsCheck->setChecked(true);
-    templateLayout->addWidget(m_addDefaultFieldsCheck);
-
-    mainLayout->addWidget(templateGroup);
-
-    // ========== 提示信息 ==========
-    QLabel *noteLabel = new QLabel("提示: 创建后可以在协议配置界面中修改所有设置", this);
-    noteLabel->setStyleSheet("color: #666; font-style: italic;");
-    mainLayout->addWidget(noteLabel);
-
-    mainLayout->addStretch();
-
-    // ========== 底部按钮 ==========
-    m_buttonBox = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-
-    QPushButton *okBtn = m_buttonBox->button(QDialogButtonBox::Ok);
-    QPushButton *cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
+    // UI已经通过.ui文件创建，这里只需要初始化按钮文本
+    QPushButton *okBtn = ui->buttonBox->button(QDialogButtonBox::Ok);
+    QPushButton *cancelBtn = ui->buttonBox->button(QDialogButtonBox::Cancel);
     okBtn->setText("创建");
     cancelBtn->setText("取消");
-
-    mainLayout->addWidget(m_buttonBox);
 
     // 初始化模板描述
     updateTemplateDescription();
@@ -103,13 +33,13 @@ void NewProtocolDialog::setupUI()
 
 void NewProtocolDialog::setupConnections()
 {
-    connect(m_buttonBox, &QDialogButtonBox::accepted,
+    connect(ui->buttonBox, &QDialogButtonBox::accepted,
             this, &NewProtocolDialog::onAccepted);
-    connect(m_buttonBox, &QDialogButtonBox::rejected,
+    connect(ui->buttonBox, &QDialogButtonBox::rejected,
             this, &QDialog::reject);
-    connect(m_templateCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(ui->templateCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &NewProtocolDialog::onTemplateChanged);
-    connect(m_nameEdit, &QLineEdit::textChanged,
+    connect(ui->nameEdit, &QLineEdit::textChanged,
             this, &NewProtocolDialog::onNameChanged);
 }
 
@@ -122,7 +52,7 @@ void NewProtocolDialog::onTemplateChanged(int index)
 void NewProtocolDialog::onNameChanged(const QString &text)
 {
     // 实时验证名称
-    QPushButton *okBtn = m_buttonBox->button(QDialogButtonBox::Ok);
+    QPushButton *okBtn = ui->buttonBox->button(QDialogButtonBox::Ok);
     okBtn->setEnabled(!text.trimmed().isEmpty());
 }
 
@@ -134,7 +64,7 @@ void NewProtocolDialog::onAccepted()
 
     // 根据选择的模板创建协议配置
     ProtocolTemplate templateType = static_cast<ProtocolTemplate>(
-        m_templateCombo->currentIndex());
+        ui->templateCombo->currentIndex());
 
     switch (templateType) {
     case ProtocolTemplate::Empty:
@@ -163,9 +93,9 @@ void NewProtocolDialog::onAccepted()
     }
 
     // 设置用户输入的基本信息
-    m_config.name = m_nameEdit->text().trimmed();
-    m_config.version = m_versionEdit->text().trimmed();
-    m_config.description = m_descriptionEdit->toPlainText().trimmed();
+    m_config.name = ui->nameEdit->text().trimmed();
+    m_config.version = ui->versionEdit->text().trimmed();
+    m_config.description = ui->descriptionEdit->toPlainText().trimmed();
 
     m_protocolName = m_config.name;
 
@@ -174,10 +104,10 @@ void NewProtocolDialog::onAccepted()
 
 bool NewProtocolDialog::validateInput()
 {
-    QString name = m_nameEdit->text().trimmed();
+    QString name = ui->nameEdit->text().trimmed();
     if (name.isEmpty()) {
         QMessageBox::warning(this, "输入错误", "协议名称不能为空！");
-        m_nameEdit->setFocus();
+        ui->nameEdit->setFocus();
         return false;
     }
 
@@ -186,7 +116,7 @@ bool NewProtocolDialog::validateInput()
     if (!nameRegex.exactMatch(name)) {
         QMessageBox::warning(this, "输入错误",
             "协议名称只能包含字母、数字、下划线和连字符！");
-        m_nameEdit->setFocus();
+        ui->nameEdit->setFocus();
         return false;
     }
 
@@ -196,7 +126,7 @@ bool NewProtocolDialog::validateInput()
 void NewProtocolDialog::updateTemplateDescription()
 {
     ProtocolTemplate templateType = static_cast<ProtocolTemplate>(
-        m_templateCombo->currentIndex());
+        ui->templateCombo->currentIndex());
 
     QString description;
 
@@ -208,7 +138,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 无帧头帧尾\n"
                      "- 无校验\n"
                      "- 无默认字段";
-        m_addDefaultFieldsCheck->setEnabled(false);
+        ui->addDefaultFieldsCheck->setEnabled(false);
         break;
 
     case ProtocolTemplate::SerialBasic:
@@ -220,7 +150,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 校验: CRC16-MODBUS\n"
                      "- 字节序: 小端序\n"
                      "默认字段: Data1~Data4 (int16)";
-        m_addDefaultFieldsCheck->setEnabled(true);
+        ui->addDefaultFieldsCheck->setEnabled(true);
         break;
 
     case ProtocolTemplate::ModbusRTU:
@@ -231,7 +161,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 校验: CRC16-MODBUS (小端序)\n"
                      "- 数据字节序: 大端序\n"
                      "默认字段: DeviceAddr, FunctionCode, DataAddr, DataValue";
-        m_addDefaultFieldsCheck->setEnabled(true);
+        ui->addDefaultFieldsCheck->setEnabled(true);
         break;
 
     case ProtocolTemplate::CustomIMU:
@@ -243,7 +173,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 校验: CRC16-CCITT\n"
                      "- 字节序: 小端序\n"
                      "默认字段: Roll, Pitch, Yaw, AccX~Z, GyroX~Z, MagX~Z, Temp";
-        m_addDefaultFieldsCheck->setEnabled(true);
+        ui->addDefaultFieldsCheck->setEnabled(true);
         break;
 
     case ProtocolTemplate::TextCSV:
@@ -254,7 +184,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 无校验\n"
                      "- 分隔符: 逗号\n"
                      "默认字段: Value1~Value4 (string)";
-        m_addDefaultFieldsCheck->setEnabled(true);
+        ui->addDefaultFieldsCheck->setEnabled(true);
         break;
 
     case ProtocolTemplate::AIGenerated:
@@ -269,11 +199,11 @@ void NewProtocolDialog::updateTemplateDescription()
                      "- 数据字段类型和位置\n"
                      "- 缩放因子和字节序\n\n"
                      "⚠️ 需要配置Claude API密钥";
-        m_addDefaultFieldsCheck->setEnabled(false);
+        ui->addDefaultFieldsCheck->setEnabled(false);
         break;
     }
 
-    m_templateDescEdit->setText(description);
+    ui->templateDescEdit->setText(description);
 }
 
 // ========== 模板创建函数 ==========
@@ -300,7 +230,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createSerialBasicProtoc
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
     config.frequency = 1000;
 
-    if (m_addDefaultFieldsCheck->isChecked()) {
+    if (ui->addDefaultFieldsCheck->isChecked()) {
         // 添加4个默认数据字段
         for (int i = 0; i < 4; ++i) {
             CommandSettingsDialog::FieldConfig field;
@@ -329,7 +259,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createModbusRTUProtocol
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
     config.frequency = 100;
 
-    if (m_addDefaultFieldsCheck->isChecked()) {
+    if (ui->addDefaultFieldsCheck->isChecked()) {
         // 设备地址
         CommandSettingsDialog::FieldConfig devAddr;
         devAddr.index = 1;
@@ -389,7 +319,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createCustomIMUProtocol
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
     config.frequency = 100;
 
-    if (m_addDefaultFieldsCheck->isChecked()) {
+    if (ui->addDefaultFieldsCheck->isChecked()) {
         int offset = 0;
 
         // 姿态角 (Roll, Pitch, Yaw)
@@ -484,7 +414,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createTextCSVProtocol()
     config.separator = ",";
     config.frequency = 1000;
 
-    if (m_addDefaultFieldsCheck->isChecked()) {
+    if (ui->addDefaultFieldsCheck->isChecked()) {
         // 添加4个字符串类型字段
         for (int i = 0; i < 4; ++i) {
             CommandSettingsDialog::FieldConfig field;

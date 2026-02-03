@@ -1,0 +1,666 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CommandSettingsDialog</class>
+ <widget class="QDialog" name="CommandSettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1600</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>协议配置</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>10</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>10</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
+   <item>
+    <widget class="QWidget" name="tabContainer" native="true">
+     <layout class="QHBoxLayout" name="tabContainerLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <property name="spacing">
+       <number>5</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="protocolListLabel">
+        <property name="text">
+         <string>协议列表:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="tabsClosable">
+         <bool>false</bool>
+        </property>
+        <property name="movable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="newProtocolBtn">
+        <property name="text">
+         <string>新建协议</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="deleteProtocolBtn">
+        <property name="text">
+         <string>删除协议</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <widget class="QGroupBox" name="frameFormatGroup">
+      <property name="title">
+       <string>帧格式配置</string>
+      </property>
+      <layout class="QVBoxLayout" name="frameFormatLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="infoGroup">
+         <property name="title">
+          <string>协议信息</string>
+         </property>
+         <layout class="QFormLayout" name="infoLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="nameLabel">
+            <property name="text">
+             <string>名称:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="protocolNameEdit">
+            <property name="placeholderText">
+             <string>例如: IMU_Protocol_V1</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="versionLabel">
+            <property name="text">
+             <string>版本:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="protocolVersionEdit">
+            <property name="placeholderText">
+             <string>例如: 1.0.0</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="descLabel">
+            <property name="text">
+             <string>描述:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QTextEdit" name="protocolDescEdit">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>协议描述...</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="frameGroup">
+         <property name="title">
+          <string>帧结构</string>
+         </property>
+         <layout class="QFormLayout" name="frameLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="headerLabel">
+            <property name="text">
+             <string>帧头(HEX):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="frameHeaderEdit">
+            <property name="placeholderText">
+             <string>例如: FF AA</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="footerLabel">
+            <property name="text">
+             <string>帧尾(HEX):</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="frameFooterEdit">
+            <property name="placeholderText">
+             <string>可选，例如: 0D 0A</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="lengthPosLabel">
+            <property name="text">
+             <string>长度位置:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="lengthPositionSpin">
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="value">
+             <number>-1</number>
+            </property>
+            <property name="specialValueText">
+             <string>无</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="checksumGroup">
+         <property name="title">
+          <string>校验配置</string>
+         </property>
+         <layout class="QFormLayout" name="checksumLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="checksumTypeLabel">
+            <property name="text">
+             <string>校验方式:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="checksumTypeCombo">
+            <item>
+             <property name="text">
+              <string>无校验</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Sum</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>XOR</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>CRC8</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>CRC16</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>CRC32</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QWidget" name="checksumParamWidget" native="true">
+            <layout class="QHBoxLayout" name="checksumParamLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="checksumStartLabel">
+               <property name="text">
+                <string>起始:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="checksumStartSpin">
+               <property name="maximum">
+                <number>255</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="checksumLengthLabel">
+               <property name="text">
+                <string>长度:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="checksumLengthSpin">
+               <property name="minimum">
+                <number>-1</number>
+               </property>
+               <property name="maximum">
+                <number>255</number>
+               </property>
+               <property name="value">
+                <number>-1</number>
+               </property>
+               <property name="specialValueText">
+                <string>到帧尾</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="checksumPosLabel">
+            <property name="text">
+             <string>校验位置:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="checksumPositionSpin">
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="value">
+             <number>-1</number>
+            </property>
+            <property name="specialValueText">
+             <string>帧尾前</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="otherGroup">
+         <property name="title">
+          <string>其他配置</string>
+         </property>
+         <layout class="QFormLayout" name="otherLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="byteOrderLabel">
+            <property name="text">
+             <string>字节序:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="byteOrderCombo">
+            <item>
+             <property name="text">
+              <string>LittleEndian</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>BigEndian</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="frequencyLabel">
+            <property name="text">
+             <string>频率:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="frequencySpin">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>10000</number>
+            </property>
+            <property name="value">
+             <number>1000</number>
+            </property>
+            <property name="suffix">
+             <string> Hz</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="separatorLabel">
+            <property name="text">
+             <string>分隔符:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="separatorEdit">
+            <property name="placeholderText">
+             <string>文本协议分隔符，如逗号</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QGroupBox" name="fieldConfigGroup">
+      <property name="title">
+       <string>字段配置</string>
+      </property>
+      <layout class="QVBoxLayout" name="fieldConfigLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QWidget" name="toolbarWidget" native="true">
+         <layout class="QHBoxLayout" name="toolbarLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="addFieldBtn">
+            <property name="text">
+             <string>添加字段</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="deleteFieldBtn">
+            <property name="text">
+             <string>删除字段</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="moveUpBtn">
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>↑</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="moveDownBtn">
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>↓</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="importFieldBtn">
+            <property name="text">
+             <string>导入字段...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="fieldTable">
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::SingleSelection</enum>
+         </property>
+         <property name="selectionBehavior">
+          <enum>QAbstractItemView::SelectRows</enum>
+         </property>
+         <property name="horizontalScrollMode">
+          <enum>QAbstractItemView::ScrollPerPixel</enum>
+         </property>
+         <attribute name="horizontalHeaderStretchLastSection">
+          <bool>true</bool>
+         </attribute>
+         <attribute name="verticalHeaderVisible">
+          <bool>false</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string>序号</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>起始</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>名称</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>类型</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>长度</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>缩放因子</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>偏移量</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>单位</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>最大值</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>最小值</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>描述</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>提示</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="buttonWidget" native="true">
+     <layout class="QHBoxLayout" name="buttonLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="importProtocolBtn">
+        <property name="text">
+         <string>导入协议...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="exportProtocolBtn">
+        <property name="text">
+         <string>导出协议...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="generateProtocolBtn">
+        <property name="text">
+         <string>生成协议</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="testProtocolBtn">
+        <property name="text">
+         <string>测试协议</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QDialogButtonBox" name="buttonBox">
+        <property name="standardButtons">
+         <set>QDialogButtonBox::Apply|QDialogButtonBox::Cancel|QDialogButtonBox::Help|QDialogButtonBox::Ok</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

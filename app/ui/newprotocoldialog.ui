@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>NewProtocolDialog</class>
+ <widget class="QDialog" name="NewProtocolDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>新建协议向导</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>10</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>15</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>15</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="infoGroup">
+     <property name="title">
+      <string>协议基本信息</string>
+     </property>
+     <layout class="QFormLayout" name="infoLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="nameLabel">
+        <property name="text">
+         <string>协议名称*:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="nameEdit">
+        <property name="placeholderText">
+         <string>例如: IMU_Protocol_V1</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="versionLabel">
+        <property name="text">
+         <string>协议版本:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="versionEdit">
+        <property name="text">
+         <string>1.0.0</string>
+        </property>
+        <property name="placeholderText">
+         <string>例如: 1.0.0</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="descriptionLabel">
+        <property name="text">
+         <string>协议描述:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QTextEdit" name="descriptionEdit">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>80</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>输入协议描述...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="templateGroup">
+     <property name="title">
+      <string>协议模板</string>
+     </property>
+     <layout class="QVBoxLayout" name="templateLayout">
+      <item>
+       <layout class="QHBoxLayout" name="templateSelectLayout">
+        <item>
+         <widget class="QLabel" name="templateLabel">
+          <property name="text">
+           <string>选择模板:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="templateCombo">
+          <item>
+           <property name="text">
+            <string>空协议</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>基础串口协议</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>MODBUS RTU协议</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>自定义IMU协议</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>文本CSV协议</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>🤖 AI智能生成</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="templateDescEdit">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>120</height>
+         </size>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="addDefaultFieldsCheck">
+        <property name="text">
+         <string>添加默认数据字段（适用于选定模板）</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="noteLabel">
+     <property name="text">
+      <string>提示: 创建后可以在协议配置界面中修改所有设置</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">color: #666; font-style: italic;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

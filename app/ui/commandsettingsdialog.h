@@ -2,20 +2,25 @@
 #define COMMANDSETTINGSDIALOG_H
 
 #include <QDialog>
-#include <QTabWidget>
-#include <QTableWidget>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QComboBox>
-#include <QSpinBox>
-#include <QDoubleSpinBox>
-#include <QGroupBox>
-#include <QDialogButtonBox>
 #include <QVector>
 #include <QMap>
 #include <QJsonObject>
 #include <QFile>
+
+// 前向声明Qt类型
+class QTabWidget;
+class QTableWidget;
+class QLineEdit;
+class QTextEdit;
+class QPushButton;
+class QComboBox;
+class QSpinBox;
+class QGroupBox;
+class QDialogButtonBox;
+
+namespace Ui {
+class CommandSettingsDialog;
+}
 
 // 前向声明protocol模块的类型
 class ProtocolManager;
@@ -188,11 +193,8 @@ private slots:
 
 private:
     void setupUI();
-    QWidget* setupProtocolTabs();
-    void setupFrameFormatGroup();
-    void setupFieldConfigGroup();
-    void setupButtons();
     void setupConnections();
+    void setupTableColumns();
     void applyStyles();
 
     void updateProtocolTabs();
@@ -231,42 +233,7 @@ private:
     void syncFromProtocolManager();
 
 private:
-    // UI组件 - 协议标签页
-    QTabWidget *m_tabWidget;
-    QPushButton *m_newProtocolBtn;
-    QPushButton *m_deleteProtocolBtn;
-
-    // UI组件 - 帧格式配置
-    QGroupBox *m_frameFormatGroup;
-    QLineEdit *m_protocolNameEdit;
-    QLineEdit *m_protocolVersionEdit;
-    QTextEdit *m_protocolDescEdit;
-    QLineEdit *m_frameHeaderEdit;
-    QLineEdit *m_frameFooterEdit;
-    QSpinBox *m_lengthPositionSpin;
-    QComboBox *m_checksumTypeCombo;
-    QSpinBox *m_checksumStartSpin;
-    QSpinBox *m_checksumLengthSpin;
-    QSpinBox *m_checksumPositionSpin;
-    QComboBox *m_byteOrderCombo;
-    QSpinBox *m_frequencySpin;
-    QLineEdit *m_separatorEdit;
-
-    // UI组件 - 字段配置
-    QGroupBox *m_fieldConfigGroup;
-    QTableWidget *m_fieldTable;
-    QPushButton *m_addFieldBtn;
-    QPushButton *m_deleteFieldBtn;
-    QPushButton *m_moveUpBtn;
-    QPushButton *m_moveDownBtn;
-    QPushButton *m_importFieldBtn;
-
-    // UI组件 - 底部按钮
-    QPushButton *m_importProtocolBtn;
-    QPushButton *m_exportProtocolBtn;
-    QPushButton *m_generateProtocolBtn;
-    QPushButton *m_testProtocolBtn;
-    QDialogButtonBox *m_buttonBox;
+    Ui::CommandSettingsDialog *ui;
 
     // 数据成员
     QMap<QString, ProtocolConfig> m_protocols;

@@ -2,13 +2,13 @@
 #define NEWPROTOCOLDIALOG_H
 
 #include <QDialog>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QComboBox>
-#include <QCheckBox>
-#include <QDialogButtonBox>
 #include <QVector>
 #include "commandsettingsdialog.h"
+
+// 前向声明
+namespace Ui {
+class NewProtocolDialog;
+}
 
 /**
  * @brief 新建协议向导对话框
@@ -62,14 +62,7 @@ private:
     CommandSettingsDialog::ProtocolConfig createAIGeneratedProtocol() const;
 
 private:
-    // UI组件
-    QLineEdit *m_nameEdit;
-    QLineEdit *m_versionEdit;
-    QTextEdit *m_descriptionEdit;
-    QComboBox *m_templateCombo;
-    QTextEdit *m_templateDescEdit;
-    QCheckBox *m_addDefaultFieldsCheck;
-    QDialogButtonBox *m_buttonBox;
+    Ui::NewProtocolDialog *ui;
 
     // 数据
     CommandSettingsDialog::ProtocolConfig m_config;

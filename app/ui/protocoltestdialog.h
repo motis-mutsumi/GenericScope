@@ -2,14 +2,14 @@
 #define PROTOCOLTESTDIALOG_H
 
 #include <QDialog>
-#include <QTextEdit>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QTableWidget>
-#include <QLabel>
 #include <QSharedPointer>
 #include "commandsettingsdialog.h"
 #include "protocol/protocolparser.h"
+
+// 前向声明
+namespace Ui {
+class ProtocolTestDialog;
+}
 
 /**
  * @brief 协议测试对话框
@@ -42,18 +42,10 @@ private:
     QString byteArrayToHexString(const QByteArray &data);
 
 private:
+    Ui::ProtocolTestDialog *ui;
+
     CommandSettingsDialog::ProtocolConfig m_config;
     QSharedPointer<ProtocolParser> m_parser;  // 协议解析器
-
-    // UI组件
-    QTextEdit *m_inputEdit;          // 输入16进制数据
-    QPushButton *m_parseBtn;         // 解析按钮
-    QPushButton *m_clearBtn;         // 清空按钮
-    QPushButton *m_sampleBtn;        // 加载示例按钮
-    QLabel *m_statusLabel;           // 状态标签
-    QTableWidget *m_resultTable;     // 解析结果表格
-    QLabel *m_checksumLabel;         // 校验码验证结果
-    QLabel *m_rawDataLabel;          // 原始数据显示
 };
 
 #endif // PROTOCOLTESTDIALOG_H

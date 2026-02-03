@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AIProtocolInputDialog</class>
+ <widget class="QDialog" name="AIProtocolInputDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>700</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>AI智能协议生成</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>通过AI分析原始数据和解析规则，自动生成协议配置</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font-size: 14px; font-weight: bold; color: #2c3e50;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="dataGroup">
+     <property name="title">
+      <string>原始16进制数据样本</string>
+     </property>
+     <layout class="QVBoxLayout" name="dataLayout">
+      <item>
+       <widget class="QLabel" name="dataHint">
+        <property name="text">
+         <string>请输入一条完整的16进制数据样本（空格分隔，如：AA 55 01 02 03）</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color: #7f8c8d; font-size: 12px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="rawDataEdit">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>150</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>示例：
+AA55 0101 2E00 C7F6 2901 601C 0000 0266 F7FF 38DA FFFF 959B 0100 C9C9 0E00 6104 EDFF BF46 1810 D4FF 0000 E1FF 0000 40FF 0000 0000 DC7E</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="rulesGroup">
+     <property name="title">
+      <string>解析规则描述</string>
+     </property>
+     <layout class="QVBoxLayout" name="rulesLayout">
+      <item>
+       <widget class="QLabel" name="rulesHint">
+        <property name="text">
+         <string>请详细描述数据的解析规则（起始位置、数据类型、缩放因子等）</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">color: #7f8c8d; font-size: 12px;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="rulesEdit">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>150</height>
+         </size>
+        </property>
+        <property name="placeholderText">
+         <string>示例：
+原始数据从第7字节开始，取44字节，按照小端int32模式解析为11个数据
+数据排列顺序：时间戳、温度、角速度(3个)、加速度(3个)、欧拉角(3个)
+
+转换公式：
+- 温度/256 = 实际温度
+- 角速度/65536/1000000*量程 = 实际角速度
+- 加速度/65536/32768*量程 = 实际加速度
+- 欧拉角转成I16后*180/32768 = 实际欧拉角</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="methodGroup">
+     <property name="title">
+      <string>生成方式</string>
+     </property>
+     <layout class="QVBoxLayout" name="methodLayout">
+      <item>
+       <widget class="QRadioButton" name="useAPIRadio">
+        <property name="text">
+         <string>使用API调用（需要API密钥）</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="useCLIRadio">
+        <property name="text">
+         <string>使用CLI命令行（需要安装claude命令）</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="methodHintLabel">
+        <property name="styleSheet">
+         <string notr="true">color: #3498db; font-size: 12px; padding: 5px;</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="statusLabel">
+     <property name="styleSheet">
+      <string notr="true">color: #27ae60; font-weight: bold;</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="progressBar">
+     <property name="visible">
+      <bool>false</bool>
+     </property>
+     <property name="minimum">
+      <number>0</number>
+     </property>
+     <property name="maximum">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pasteExampleBtn">
+       <property name="text">
+        <string>粘贴示例</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="clearBtn">
+       <property name="text">
+        <string>清空</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="generateBtn">
+       <property name="text">
+        <string>生成协议</string>
+       </property>
+       <property name="default">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cancelBtn">
+       <property name="text">
+        <string>取消</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

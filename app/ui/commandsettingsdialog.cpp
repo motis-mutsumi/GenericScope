@@ -1,15 +1,9 @@
 #include "commandsettingsdialog.h"
+#include "ui_commandsettingsdialog.h"
 #include "protocoltypeconverter.h"
 #include "protocoltestdialog.h"
 #include "newprotocoldialog.h"
 #include "protocol/protocolmanager.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFormLayout>
-#include <QGridLayout>
-#include <QSplitter>
-#include <QGroupBox>
-#include <QLabel>
 #include <QHeaderView>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -21,6 +15,7 @@
 #include <QInputDialog>
 #include <QSettings>
 #include <QDebug>
+#include <QComboBox>
 
 // 表格列索引常量定义
 const int CommandSettingsDialog::kFieldTableIndexColumn;
@@ -38,9 +33,14 @@ const int CommandSettingsDialog::kFieldTableTipColumn;
 
 CommandSettingsDialog::CommandSettingsDialog(QWidget *parent)
     : QDialog(parent)
-    , m_tabWidget(nullptr)
+    , ui(new Ui::CommandSettingsDialog)
     , m_isModified(false)
 {
+    ui->setupUi(this);
+
+    // 移除标题栏的帮助按钮（？），改用底部的"帮助"按钮
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
     setupUI();
     setupConnections();
     loadProtocols();
@@ -49,316 +49,101 @@ CommandSettingsDialog::CommandSettingsDialog(QWidget *parent)
 
 CommandSettingsDialog::~CommandSettingsDialog()
 {
+    delete ui;
 }
 
 void CommandSettingsDialog::setupUI()
 {
-    setWindowTitle("协议配置");
-    resize(1600, 800);
+    // UI已经通过.ui文件创建，这里只需要设置表格列宽和按钮文本
+    setupTableColumns();
 
-    // 移除标题栏的帮助按钮（？），改用底部的"帮助"按钮
-    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    // 设置Splitter的拉伸比例
+    ui->splitter->setStretchFactor(0, 1);  // 左侧帧格式配置
+    ui->splitter->setStretchFactor(1, 3);  // 右侧字段配置
 
-    // 主布局
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(10);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
+    // 设置对话框按钮文本（中文化）
+    QPushButton *okBtn = ui->buttonBox->button(QDialogButtonBox::Ok);
+    QPushButton *cancelBtn = ui->buttonBox->button(QDialogButtonBox::Cancel);
+    QPushButton *applyBtn = ui->buttonBox->button(QDialogButtonBox::Apply);
+    QPushButton *helpBtn = ui->buttonBox->button(QDialogButtonBox::Help);
 
-    // 设置协议标签页（包含新建/删除按钮）
-    QWidget *tabContainer = setupProtocolTabs();
-    mainLayout->addWidget(tabContainer);
-
-    // 创建内容区域的分割器
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
-
-    // 左侧：帧格式配置
-    setupFrameFormatGroup();
-    splitter->addWidget(m_frameFormatGroup);
-
-    // 右侧：字段配置
-    setupFieldConfigGroup();
-    splitter->addWidget(m_fieldConfigGroup);
-
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 3);
-
-    mainLayout->addWidget(splitter);
-
-    // 底部按钮
-    setupButtons();
-    mainLayout->addWidget(m_importProtocolBtn->parentWidget());
+    if (okBtn) okBtn->setText("确定");
+    if (cancelBtn) cancelBtn->setText("取消");
+    if (applyBtn) applyBtn->setText("应用");
+    if (helpBtn) helpBtn->setText("帮助");
 }
 
-QWidget* CommandSettingsDialog::setupProtocolTabs()
+void CommandSettingsDialog::setupTableColumns()
 {
-    // 顶部协议标签页容器
-    QWidget *tabContainer = new QWidget(this);
-    QHBoxLayout *tabLayout = new QHBoxLayout(tabContainer);
-    tabLayout->setContentsMargins(0, 0, 0, 0);
-    tabLayout->setSpacing(5);
-
-    // 标签页
-    m_tabWidget = new QTabWidget(this);
-    m_tabWidget->setTabsClosable(false);
-    m_tabWidget->setMovable(true);
-
-    // 新建/删除按钮
-    m_newProtocolBtn = new QPushButton("新建协议", this);
-    m_deleteProtocolBtn = new QPushButton("删除协议", this);
-
-    tabLayout->addWidget(new QLabel("协议列表:", this));
-    tabLayout->addWidget(m_tabWidget, 1);
-    tabLayout->addWidget(m_newProtocolBtn);
-    tabLayout->addWidget(m_deleteProtocolBtn);
-
-    return tabContainer;
-}
-
-void CommandSettingsDialog::setupFrameFormatGroup()
-{
-    m_frameFormatGroup = new QGroupBox("帧格式配置", this);
-    QVBoxLayout *mainLayout = new QVBoxLayout(m_frameFormatGroup);
-    mainLayout->setSpacing(8);
-
-    // ========== 协议信息 ==========
-    QGroupBox *infoGroup = new QGroupBox("协议信息", m_frameFormatGroup);
-    QFormLayout *infoLayout = new QFormLayout(infoGroup);
-
-    m_protocolNameEdit = new QLineEdit(this);
-    m_protocolNameEdit->setPlaceholderText("例如: IMU_Protocol_V1");
-    infoLayout->addRow("名称:", m_protocolNameEdit);
-
-    m_protocolVersionEdit = new QLineEdit(this);
-    m_protocolVersionEdit->setPlaceholderText("例如: 1.0.0");
-    infoLayout->addRow("版本:", m_protocolVersionEdit);
-
-    m_protocolDescEdit = new QTextEdit(this);
-    m_protocolDescEdit->setPlaceholderText("协议描述...");
-    m_protocolDescEdit->setMaximumHeight(60);
-    infoLayout->addRow("描述:", m_protocolDescEdit);
-
-    mainLayout->addWidget(infoGroup);
-
-    // ========== 帧结构 ==========
-    QGroupBox *frameGroup = new QGroupBox("帧结构", m_frameFormatGroup);
-    QFormLayout *frameLayout = new QFormLayout(frameGroup);
-
-    m_frameHeaderEdit = new QLineEdit(this);
-    m_frameHeaderEdit->setPlaceholderText("例如: FF AA");
-    frameLayout->addRow("帧头(HEX):", m_frameHeaderEdit);
-
-    m_frameFooterEdit = new QLineEdit(this);
-    m_frameFooterEdit->setPlaceholderText("可选，例如: 0D 0A");
-    frameLayout->addRow("帧尾(HEX):", m_frameFooterEdit);
-
-    m_lengthPositionSpin = new QSpinBox(this);
-    m_lengthPositionSpin->setRange(-1, 255);
-    m_lengthPositionSpin->setValue(-1);
-    m_lengthPositionSpin->setSpecialValueText("无");
-    frameLayout->addRow("长度位置:", m_lengthPositionSpin);
-
-    mainLayout->addWidget(frameGroup);
-
-    // ========== 校验配置 ==========
-    QGroupBox *checksumGroup = new QGroupBox("校验配置", m_frameFormatGroup);
-    QFormLayout *checksumLayout = new QFormLayout(checksumGroup);
-
-    m_checksumTypeCombo = new QComboBox(this);
-    m_checksumTypeCombo->addItems({"无校验", "Sum", "XOR", "CRC8", "CRC16", "CRC32"});
-    checksumLayout->addRow("校验方式:", m_checksumTypeCombo);
-
-    QHBoxLayout *checksumParamLayout = new QHBoxLayout();
-    m_checksumStartSpin = new QSpinBox(this);
-    m_checksumStartSpin->setRange(0, 255);
-    checksumParamLayout->addWidget(new QLabel("起始:", this));
-    checksumParamLayout->addWidget(m_checksumStartSpin);
-
-    m_checksumLengthSpin = new QSpinBox(this);
-    m_checksumLengthSpin->setRange(-1, 255);
-    m_checksumLengthSpin->setValue(-1);
-    m_checksumLengthSpin->setSpecialValueText("到帧尾");
-    checksumParamLayout->addWidget(new QLabel("长度:", this));
-    checksumParamLayout->addWidget(m_checksumLengthSpin);
-    checksumLayout->addRow("", checksumParamLayout);
-
-    m_checksumPositionSpin = new QSpinBox(this);
-    m_checksumPositionSpin->setRange(-1, 255);
-    m_checksumPositionSpin->setValue(-1);
-    m_checksumPositionSpin->setSpecialValueText("帧尾前");
-    checksumLayout->addRow("校验位置:", m_checksumPositionSpin);
-
-    mainLayout->addWidget(checksumGroup);
-
-    // ========== 其他配置 ==========
-    QGroupBox *otherGroup = new QGroupBox("其他配置", m_frameFormatGroup);
-    QFormLayout *otherLayout = new QFormLayout(otherGroup);
-
-    m_byteOrderCombo = new QComboBox(this);
-    m_byteOrderCombo->addItems({"LittleEndian", "BigEndian"});
-    otherLayout->addRow("字节序:", m_byteOrderCombo);
-
-    m_frequencySpin = new QSpinBox(this);
-    m_frequencySpin->setRange(1, 10000);
-    m_frequencySpin->setValue(1000);
-    m_frequencySpin->setSuffix(" Hz");
-    otherLayout->addRow("频率:", m_frequencySpin);
-
-    m_separatorEdit = new QLineEdit(this);
-    m_separatorEdit->setPlaceholderText("文本协议分隔符，如逗号");
-    otherLayout->addRow("分隔符:", m_separatorEdit);
-
-    mainLayout->addWidget(otherGroup);
-    mainLayout->addStretch();
-}
-
-void CommandSettingsDialog::setupFieldConfigGroup()
-{
-    m_fieldConfigGroup = new QGroupBox("字段配置", this);
-    QVBoxLayout *mainLayout = new QVBoxLayout(m_fieldConfigGroup);
-    mainLayout->setSpacing(8);
-
-    // 字段表格工具栏
-    QHBoxLayout *toolbarLayout = new QHBoxLayout();
-    m_addFieldBtn = new QPushButton("添加字段", this);
-    m_deleteFieldBtn = new QPushButton("删除字段", this);
-    m_moveUpBtn = new QPushButton("↑", this);
-    m_moveDownBtn = new QPushButton("↓", this);
-    m_importFieldBtn = new QPushButton("导入字段...", this);
-
-    m_moveUpBtn->setMaximumWidth(40);
-    m_moveDownBtn->setMaximumWidth(40);
-
-    toolbarLayout->addWidget(m_addFieldBtn);
-    toolbarLayout->addWidget(m_deleteFieldBtn);
-    toolbarLayout->addWidget(m_moveUpBtn);
-    toolbarLayout->addWidget(m_moveDownBtn);
-    toolbarLayout->addWidget(m_importFieldBtn);
-    toolbarLayout->addStretch();
-
-    mainLayout->addLayout(toolbarLayout);
-
-    // 字段表格 - 包含所有12列
-    m_fieldTable = new QTableWidget(this);
-    m_fieldTable->setColumnCount(12);
-    m_fieldTable->setHorizontalHeaderLabels({
-        "序号", "起始", "名称", "类型", "长度", "缩放因子",
-        "偏移量", "单位", "最大值", "最小值", "描述", "提示"
-    });
-
-    m_fieldTable->horizontalHeader()->setStretchLastSection(true);
-    m_fieldTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_fieldTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    m_fieldTable->setAlternatingRowColors(true);
-    m_fieldTable->verticalHeader()->setVisible(false);
-    m_fieldTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
-
-    // 优化列宽设置 - 根据内容重要性调整
-    m_fieldTable->setColumnWidth(kFieldTableIndexColumn, 50);       // 序号
-    m_fieldTable->setColumnWidth(kFieldTableElementHeadColumn, 70); // 起始
-    m_fieldTable->setColumnWidth(kFieldTableNameColumn, 120);       // 名称（加宽）
-    m_fieldTable->setColumnWidth(kFieldTableTypeColumn, 90);        // 类型
-    m_fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);  // 长度
-    m_fieldTable->setColumnWidth(kFieldTableScaleColumn, 90);       // 缩放因子
-    m_fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);      // 偏移量
-    m_fieldTable->setColumnWidth(kFieldTableUnitColumn, 70);        // 单位
-    m_fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);         // 最大值
-    m_fieldTable->setColumnWidth(kFieldTableMinColumn, 80);         // 最小值
-    m_fieldTable->setColumnWidth(kFieldTableDescColumn, 150);       // 描述（加宽）
-
-    mainLayout->addWidget(m_fieldTable);
-}
-
-void CommandSettingsDialog::setupButtons()
-{
-    QWidget *buttonWidget = new QWidget(this);
-    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonWidget);
-    buttonLayout->setContentsMargins(0, 0, 0, 0);
-
-    m_importProtocolBtn = new QPushButton("导入协议...", this);
-    m_exportProtocolBtn = new QPushButton("导出协议...", this);
-    m_generateProtocolBtn = new QPushButton("生成协议", this);
-    m_testProtocolBtn = new QPushButton("测试协议", this);
-
-    buttonLayout->addWidget(m_importProtocolBtn);
-    buttonLayout->addWidget(m_exportProtocolBtn);
-    buttonLayout->addWidget(m_generateProtocolBtn);
-    buttonLayout->addWidget(m_testProtocolBtn);
-    buttonLayout->addStretch();
-
-    m_buttonBox = new QDialogButtonBox(this);
-    m_buttonBox->setStandardButtons(QDialogButtonBox::Ok |
-                                     QDialogButtonBox::Cancel |
-                                     QDialogButtonBox::Apply |
-                                     QDialogButtonBox::Help);
-
-    QPushButton *okBtn = m_buttonBox->button(QDialogButtonBox::Ok);
-    QPushButton *cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
-    QPushButton *applyBtn = m_buttonBox->button(QDialogButtonBox::Apply);
-    QPushButton *helpBtn = m_buttonBox->button(QDialogButtonBox::Help);
-
-    okBtn->setText("确定");
-    cancelBtn->setText("取消");
-    applyBtn->setText("应用");
-    helpBtn->setText("帮助");
-
-    buttonLayout->addWidget(m_buttonBox);
+    // 设置表格列宽 - 根据内容重要性调整
+    ui->fieldTable->setColumnWidth(kFieldTableIndexColumn, 50);       // 序号
+    ui->fieldTable->setColumnWidth(kFieldTableElementHeadColumn, 70); // 起始
+    ui->fieldTable->setColumnWidth(kFieldTableNameColumn, 120);       // 名称（加宽）
+    ui->fieldTable->setColumnWidth(kFieldTableTypeColumn, 90);        // 类型
+    ui->fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);  // 长度
+    ui->fieldTable->setColumnWidth(kFieldTableScaleColumn, 90);       // 缩放因子
+    ui->fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);      // 偏移量
+    ui->fieldTable->setColumnWidth(kFieldTableUnitColumn, 70);        // 单位
+    ui->fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);         // 最大值
+    ui->fieldTable->setColumnWidth(kFieldTableMinColumn, 80);         // 最小值
+    ui->fieldTable->setColumnWidth(kFieldTableDescColumn, 150);       // 描述（加宽）
 }
 
 void CommandSettingsDialog::setupConnections()
 {
     // 协议标签页
-    connect(m_tabWidget, &QTabWidget::currentChanged,
+    connect(ui->tabWidget, &QTabWidget::currentChanged,
             this, &CommandSettingsDialog::onTabChanged);
-    connect(m_newProtocolBtn, &QPushButton::clicked,
+    connect(ui->newProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onNewProtocol);
-    connect(m_deleteProtocolBtn, &QPushButton::clicked,
+    connect(ui->deleteProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onDeleteProtocol);
 
     // 帧格式配置
-    connect(m_frameHeaderEdit, &QLineEdit::textChanged,
+    connect(ui->frameHeaderEdit, &QLineEdit::textChanged,
             this, &CommandSettingsDialog::onFrameHeaderChanged);
-    connect(m_frameFooterEdit, &QLineEdit::textChanged,
+    connect(ui->frameFooterEdit, &QLineEdit::textChanged,
             this, &CommandSettingsDialog::onFrameFooterChanged);
-    connect(m_checksumTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(ui->checksumTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &CommandSettingsDialog::onChecksumTypeChanged);
-    connect(m_byteOrderCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(ui->byteOrderCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &CommandSettingsDialog::onByteOrderChanged);
 
     // 字段配置
-    connect(m_addFieldBtn, &QPushButton::clicked,
+    connect(ui->addFieldBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onAddField);
-    connect(m_deleteFieldBtn, &QPushButton::clicked,
+    connect(ui->deleteFieldBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onDeleteField);
-    connect(m_moveUpBtn, &QPushButton::clicked,
+    connect(ui->moveUpBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onMoveFieldUp);
-    connect(m_moveDownBtn, &QPushButton::clicked,
+    connect(ui->moveDownBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onMoveFieldDown);
-    connect(m_importFieldBtn, &QPushButton::clicked,
+    connect(ui->importFieldBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onImportFields);
-    connect(m_fieldTable, &QTableWidget::cellChanged,
+    connect(ui->fieldTable, &QTableWidget::cellChanged,
             this, &CommandSettingsDialog::onFieldCellChanged);
 
     // 导入导出
-    connect(m_importProtocolBtn, &QPushButton::clicked,
+    connect(ui->importProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onImportProtocol);
-    connect(m_exportProtocolBtn, &QPushButton::clicked,
+    connect(ui->exportProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onExportProtocol);
 
     // 按钮
-    connect(m_generateProtocolBtn, &QPushButton::clicked,
+    connect(ui->generateProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onGenerateProtocol);
-    connect(m_testProtocolBtn, &QPushButton::clicked,
+    connect(ui->testProtocolBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onTestProtocol);
-    connect(m_buttonBox, &QDialogButtonBox::accepted,
+    connect(ui->buttonBox, &QDialogButtonBox::accepted,
             this, &CommandSettingsDialog::onOk);
-    connect(m_buttonBox, &QDialogButtonBox::rejected,
+    connect(ui->buttonBox, &QDialogButtonBox::rejected,
             this, &CommandSettingsDialog::onCancel);
 
-    QPushButton *applyBtn = m_buttonBox->button(QDialogButtonBox::Apply);
+    QPushButton *applyBtn = ui->buttonBox->button(QDialogButtonBox::Apply);
     connect(applyBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::onApply);
 
-    QPushButton *helpBtn = m_buttonBox->button(QDialogButtonBox::Help);
+    QPushButton *helpBtn = ui->buttonBox->button(QDialogButtonBox::Help);
     connect(helpBtn, &QPushButton::clicked,
             this, &CommandSettingsDialog::showHelp);
 }
@@ -422,11 +207,11 @@ void CommandSettingsDialog::onDeleteProtocol()
 
 void CommandSettingsDialog::onTabChanged(int index)
 {
-    if (index < 0 || index >= m_tabWidget->count()) {
+    if (index < 0 || index >= ui->tabWidget->count()) {
         return;
     }
 
-    QString name = m_tabWidget->tabText(index);
+    QString name = ui->tabWidget->tabText(index);
     if (m_protocols.contains(name)) {
         m_currentProtocolName = name;
         setCurrentConfig(m_protocols[name]);
@@ -437,7 +222,7 @@ void CommandSettingsDialog::onTabChanged(int index)
 
 void CommandSettingsDialog::onFrameHeaderChanged()
 {
-    QString header = m_frameHeaderEdit->text().trimmed();
+    QString header = ui->frameHeaderEdit->text().trimmed();
     if (!validateHexString(header) && !header.isEmpty()) {
         QMessageBox::warning(this, "警告", "帧头格式错误！请输入16进制字符串，如: FF AA");
         return;
@@ -447,7 +232,7 @@ void CommandSettingsDialog::onFrameHeaderChanged()
 
 void CommandSettingsDialog::onFrameFooterChanged()
 {
-    QString footer = m_frameFooterEdit->text().trimmed();
+    QString footer = ui->frameFooterEdit->text().trimmed();
     if (!validateHexString(footer) && !footer.isEmpty()) {
         QMessageBox::warning(this, "警告", "帧尾格式错误！请输入16进制字符串，如: 0D 0A");
         return;
@@ -459,9 +244,9 @@ void CommandSettingsDialog::onChecksumTypeChanged(int index)
 {
     // 根据校验类型启用/禁用相关控件
     bool enabled = (index > 0); // 0是"无校验"
-    m_checksumStartSpin->setEnabled(enabled);
-    m_checksumLengthSpin->setEnabled(enabled);
-    m_checksumPositionSpin->setEnabled(enabled);
+    ui->checksumStartSpin->setEnabled(enabled);
+    ui->checksumLengthSpin->setEnabled(enabled);
+    ui->checksumPositionSpin->setEnabled(enabled);
     m_isModified = true;
 }
 
@@ -475,15 +260,15 @@ void CommandSettingsDialog::onByteOrderChanged(int index)
 
 void CommandSettingsDialog::onAddField()
 {
-    int row = m_fieldTable->rowCount();
-    m_fieldTable->insertRow(row);
+    int row = ui->fieldTable->rowCount();
+    ui->fieldTable->insertRow(row);
 
     // 设置默认值 - 所有12列
-    m_fieldTable->setItem(row, kFieldTableIndexColumn,
+    ui->fieldTable->setItem(row, kFieldTableIndexColumn,
                           new QTableWidgetItem(QString::number(row + 1)));
-    m_fieldTable->setItem(row, kFieldTableElementHeadColumn,
+    ui->fieldTable->setItem(row, kFieldTableElementHeadColumn,
                           new QTableWidgetItem("0"));
-    m_fieldTable->setItem(row, kFieldTableNameColumn,
+    ui->fieldTable->setItem(row, kFieldTableNameColumn,
                           new QTableWidgetItem(QString("field_%1").arg(row + 1)));
 
     // 类型下拉框
@@ -492,23 +277,23 @@ void CommandSettingsDialog::onAddField()
                          "int32_t", "uint32_t", "float", "double",
                          "mbyte_t", "string"});
     typeCombo->setCurrentText("int16_t");
-    m_fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
+    ui->fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
 
-    m_fieldTable->setItem(row, kFieldTableByteLengthColumn,
+    ui->fieldTable->setItem(row, kFieldTableByteLengthColumn,
                           new QTableWidgetItem("2"));
-    m_fieldTable->setItem(row, kFieldTableScaleColumn,
+    ui->fieldTable->setItem(row, kFieldTableScaleColumn,
                           new QTableWidgetItem("1.0"));
-    m_fieldTable->setItem(row, kFieldTableOffsetColumn,
+    ui->fieldTable->setItem(row, kFieldTableOffsetColumn,
                           new QTableWidgetItem("0.0"));
-    m_fieldTable->setItem(row, kFieldTableUnitColumn,
+    ui->fieldTable->setItem(row, kFieldTableUnitColumn,
                           new QTableWidgetItem(""));
-    m_fieldTable->setItem(row, kFieldTableMaxColumn,
+    ui->fieldTable->setItem(row, kFieldTableMaxColumn,
                           new QTableWidgetItem("0.0"));
-    m_fieldTable->setItem(row, kFieldTableMinColumn,
+    ui->fieldTable->setItem(row, kFieldTableMinColumn,
                           new QTableWidgetItem("0.0"));
-    m_fieldTable->setItem(row, kFieldTableDescColumn,
+    ui->fieldTable->setItem(row, kFieldTableDescColumn,
                           new QTableWidgetItem(""));
-    m_fieldTable->setItem(row, kFieldTableTipColumn,
+    ui->fieldTable->setItem(row, kFieldTableTipColumn,
                           new QTableWidgetItem(""));
 
     m_isModified = true;
@@ -516,17 +301,17 @@ void CommandSettingsDialog::onAddField()
 
 void CommandSettingsDialog::onDeleteField()
 {
-    int currentRow = m_fieldTable->currentRow();
+    int currentRow = ui->fieldTable->currentRow();
     if (currentRow < 0) {
         QMessageBox::warning(this, "警告", "请先选择要删除的字段！");
         return;
     }
 
-    m_fieldTable->removeRow(currentRow);
+    ui->fieldTable->removeRow(currentRow);
 
     // 更新序号
-    for (int i = 0; i < m_fieldTable->rowCount(); ++i) {
-        m_fieldTable->item(i, kFieldTableIndexColumn)->setText(QString::number(i + 1));
+    for (int i = 0; i < ui->fieldTable->rowCount(); ++i) {
+        ui->fieldTable->item(i, kFieldTableIndexColumn)->setText(QString::number(i + 1));
     }
 
     m_isModified = true;
@@ -534,47 +319,47 @@ void CommandSettingsDialog::onDeleteField()
 
 void CommandSettingsDialog::onMoveFieldUp()
 {
-    int currentRow = m_fieldTable->currentRow();
+    int currentRow = ui->fieldTable->currentRow();
     if (currentRow <= 0) {
         return;
     }
 
     // 交换两行
-    for (int col = 0; col < m_fieldTable->columnCount(); ++col) {
-        QTableWidgetItem *item1 = m_fieldTable->takeItem(currentRow, col);
-        QTableWidgetItem *item2 = m_fieldTable->takeItem(currentRow - 1, col);
-        m_fieldTable->setItem(currentRow, col, item2);
-        m_fieldTable->setItem(currentRow - 1, col, item1);
+    for (int col = 0; col < ui->fieldTable->columnCount(); ++col) {
+        QTableWidgetItem *item1 = ui->fieldTable->takeItem(currentRow, col);
+        QTableWidgetItem *item2 = ui->fieldTable->takeItem(currentRow - 1, col);
+        ui->fieldTable->setItem(currentRow, col, item2);
+        ui->fieldTable->setItem(currentRow - 1, col, item1);
     }
 
     // 更新序号
-    m_fieldTable->item(currentRow, kFieldTableIndexColumn)->setText(QString::number(currentRow + 1));
-    m_fieldTable->item(currentRow - 1, kFieldTableIndexColumn)->setText(QString::number(currentRow));
+    ui->fieldTable->item(currentRow, kFieldTableIndexColumn)->setText(QString::number(currentRow + 1));
+    ui->fieldTable->item(currentRow - 1, kFieldTableIndexColumn)->setText(QString::number(currentRow));
 
-    m_fieldTable->setCurrentCell(currentRow - 1, 0);
+    ui->fieldTable->setCurrentCell(currentRow - 1, 0);
     m_isModified = true;
 }
 
 void CommandSettingsDialog::onMoveFieldDown()
 {
-    int currentRow = m_fieldTable->currentRow();
-    if (currentRow < 0 || currentRow >= m_fieldTable->rowCount() - 1) {
+    int currentRow = ui->fieldTable->currentRow();
+    if (currentRow < 0 || currentRow >= ui->fieldTable->rowCount() - 1) {
         return;
     }
 
     // 交换两行
-    for (int col = 0; col < m_fieldTable->columnCount(); ++col) {
-        QTableWidgetItem *item1 = m_fieldTable->takeItem(currentRow, col);
-        QTableWidgetItem *item2 = m_fieldTable->takeItem(currentRow + 1, col);
-        m_fieldTable->setItem(currentRow, col, item2);
-        m_fieldTable->setItem(currentRow + 1, col, item1);
+    for (int col = 0; col < ui->fieldTable->columnCount(); ++col) {
+        QTableWidgetItem *item1 = ui->fieldTable->takeItem(currentRow, col);
+        QTableWidgetItem *item2 = ui->fieldTable->takeItem(currentRow + 1, col);
+        ui->fieldTable->setItem(currentRow, col, item2);
+        ui->fieldTable->setItem(currentRow + 1, col, item1);
     }
 
     // 更新序号
-    m_fieldTable->item(currentRow, kFieldTableIndexColumn)->setText(QString::number(currentRow + 1));
-    m_fieldTable->item(currentRow + 1, kFieldTableIndexColumn)->setText(QString::number(currentRow + 2));
+    ui->fieldTable->item(currentRow, kFieldTableIndexColumn)->setText(QString::number(currentRow + 1));
+    ui->fieldTable->item(currentRow + 1, kFieldTableIndexColumn)->setText(QString::number(currentRow + 2));
 
-    m_fieldTable->setCurrentCell(currentRow + 1, 0);
+    ui->fieldTable->setCurrentCell(currentRow + 1, 0);
     m_isModified = true;
 }
 
@@ -838,26 +623,26 @@ void CommandSettingsDialog::onCancel()
 
 void CommandSettingsDialog::updateProtocolTabs()
 {
-    m_tabWidget->clear();
+    ui->tabWidget->clear();
 
     for (auto it = m_protocols.begin(); it != m_protocols.end(); ++it) {
         QWidget *tabPage = new QWidget(this);
-        m_tabWidget->addTab(tabPage, it.key());
+        ui->tabWidget->addTab(tabPage, it.key());
     }
 
     // 选择当前协议
     if (!m_currentProtocolName.isEmpty()) {
-        for (int i = 0; i < m_tabWidget->count(); ++i) {
-            if (m_tabWidget->tabText(i) == m_currentProtocolName) {
-                m_tabWidget->setCurrentIndex(i);
+        for (int i = 0; i < ui->tabWidget->count(); ++i) {
+            if (ui->tabWidget->tabText(i) == m_currentProtocolName) {
+                ui->tabWidget->setCurrentIndex(i);
                 break;
             }
         }
     }
 
     // 如果有协议，显示第一个
-    if (m_tabWidget->count() > 0 && m_currentProtocolName.isEmpty()) {
-        m_currentProtocolName = m_tabWidget->tabText(0);
+    if (ui->tabWidget->count() > 0 && m_currentProtocolName.isEmpty()) {
+        m_currentProtocolName = ui->tabWidget->tabText(0);
         setCurrentConfig(m_protocols[m_currentProtocolName]);
     }
 }
@@ -870,27 +655,27 @@ void CommandSettingsDialog::updateFrameFormatUI()
 
     const ProtocolConfig &config = m_protocols[m_currentProtocolName];
 
-    m_protocolNameEdit->setText(config.name);
-    m_protocolVersionEdit->setText(config.version);
-    m_protocolDescEdit->setPlainText(config.description);
+    ui->protocolNameEdit->setText(config.name);
+    ui->protocolVersionEdit->setText(config.version);
+    ui->protocolDescEdit->setPlainText(config.description);
 
-    m_frameHeaderEdit->setText(config.frameHeader);
-    m_frameFooterEdit->setText(config.frameFooter);
-    m_lengthPositionSpin->setValue(config.lengthPosition);
+    ui->frameHeaderEdit->setText(config.frameHeader);
+    ui->frameFooterEdit->setText(config.frameFooter);
+    ui->lengthPositionSpin->setValue(config.lengthPosition);
 
-    m_checksumTypeCombo->setCurrentText(checksumTypeToString(config.checksumType));
-    m_checksumStartSpin->setValue(config.checksumStart);
-    m_checksumLengthSpin->setValue(config.checksumLength);
-    m_checksumPositionSpin->setValue(config.checksumPosition);
+    ui->checksumTypeCombo->setCurrentText(checksumTypeToString(config.checksumType));
+    ui->checksumStartSpin->setValue(config.checksumStart);
+    ui->checksumLengthSpin->setValue(config.checksumLength);
+    ui->checksumPositionSpin->setValue(config.checksumPosition);
 
-    m_byteOrderCombo->setCurrentText(byteOrderToString(config.byteOrder));
-    m_frequencySpin->setValue(config.frequency);
-    m_separatorEdit->setText(config.separator);
+    ui->byteOrderCombo->setCurrentText(byteOrderToString(config.byteOrder));
+    ui->frequencySpin->setValue(config.frequency);
+    ui->separatorEdit->setText(config.separator);
 }
 
 void CommandSettingsDialog::updateFieldTable()
 {
-    m_fieldTable->setRowCount(0);
+    ui->fieldTable->setRowCount(0);
 
     if (!m_protocols.contains(m_currentProtocolName)) {
         return;
@@ -901,15 +686,15 @@ void CommandSettingsDialog::updateFieldTable()
     for (int i = 0; i < config.fields.size(); ++i) {
         const FieldConfig &field = config.fields[i];
 
-        int row = m_fieldTable->rowCount();
-        m_fieldTable->insertRow(row);
+        int row = ui->fieldTable->rowCount();
+        ui->fieldTable->insertRow(row);
 
         // 设置所有12列的值
-        m_fieldTable->setItem(row, kFieldTableIndexColumn,
+        ui->fieldTable->setItem(row, kFieldTableIndexColumn,
                               new QTableWidgetItem(QString::number(field.index)));
-        m_fieldTable->setItem(row, kFieldTableElementHeadColumn,
+        ui->fieldTable->setItem(row, kFieldTableElementHeadColumn,
                               new QTableWidgetItem(QString::number(field.elementHead)));
-        m_fieldTable->setItem(row, kFieldTableNameColumn,
+        ui->fieldTable->setItem(row, kFieldTableNameColumn,
                               new QTableWidgetItem(field.name));
 
         QComboBox *typeCombo = new QComboBox(this);
@@ -917,23 +702,23 @@ void CommandSettingsDialog::updateFieldTable()
                              "int32_t", "uint32_t", "float", "double",
                              "mbyte_t", "string"});
         typeCombo->setCurrentText(dataTypeToString(field.type));
-        m_fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
+        ui->fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
 
-        m_fieldTable->setItem(row, kFieldTableByteLengthColumn,
+        ui->fieldTable->setItem(row, kFieldTableByteLengthColumn,
                               new QTableWidgetItem(QString::number(field.byteLength)));
-        m_fieldTable->setItem(row, kFieldTableScaleColumn,
+        ui->fieldTable->setItem(row, kFieldTableScaleColumn,
                               new QTableWidgetItem(QString::number(field.scale, 'g', 6)));
-        m_fieldTable->setItem(row, kFieldTableOffsetColumn,
+        ui->fieldTable->setItem(row, kFieldTableOffsetColumn,
                               new QTableWidgetItem(QString::number(field.offset, 'g', 6)));
-        m_fieldTable->setItem(row, kFieldTableUnitColumn,
+        ui->fieldTable->setItem(row, kFieldTableUnitColumn,
                               new QTableWidgetItem(field.unit));
-        m_fieldTable->setItem(row, kFieldTableMaxColumn,
+        ui->fieldTable->setItem(row, kFieldTableMaxColumn,
                               new QTableWidgetItem(QString::number(field.maximum, 'g', 6)));
-        m_fieldTable->setItem(row, kFieldTableMinColumn,
+        ui->fieldTable->setItem(row, kFieldTableMinColumn,
                               new QTableWidgetItem(QString::number(field.minimum, 'g', 6)));
-        m_fieldTable->setItem(row, kFieldTableDescColumn,
+        ui->fieldTable->setItem(row, kFieldTableDescColumn,
                               new QTableWidgetItem(field.description));
-        m_fieldTable->setItem(row, kFieldTableTipColumn,
+        ui->fieldTable->setItem(row, kFieldTableTipColumn,
                               new QTableWidgetItem(field.tip));
     }
 }
@@ -944,45 +729,45 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
 {
     ProtocolConfig config;
 
-    config.name = m_protocolNameEdit->text().trimmed();
-    config.version = m_protocolVersionEdit->text().trimmed();
-    config.description = m_protocolDescEdit->toPlainText().trimmed();
+    config.name = ui->protocolNameEdit->text().trimmed();
+    config.version = ui->protocolVersionEdit->text().trimmed();
+    config.description = ui->protocolDescEdit->toPlainText().trimmed();
 
-    config.frameHeader = m_frameHeaderEdit->text().trimmed();
-    config.frameFooter = m_frameFooterEdit->text().trimmed();
-    config.lengthPosition = m_lengthPositionSpin->value();
+    config.frameHeader = ui->frameHeaderEdit->text().trimmed();
+    config.frameFooter = ui->frameFooterEdit->text().trimmed();
+    config.lengthPosition = ui->lengthPositionSpin->value();
 
-    config.checksumType = stringToChecksumType(m_checksumTypeCombo->currentText());
-    config.checksumStart = m_checksumStartSpin->value();
-    config.checksumLength = m_checksumLengthSpin->value();
-    config.checksumPosition = m_checksumPositionSpin->value();
+    config.checksumType = stringToChecksumType(ui->checksumTypeCombo->currentText());
+    config.checksumStart = ui->checksumStartSpin->value();
+    config.checksumLength = ui->checksumLengthSpin->value();
+    config.checksumPosition = ui->checksumPositionSpin->value();
 
-    config.byteOrder = stringToByteOrder(m_byteOrderCombo->currentText());
-    config.frequency = m_frequencySpin->value();
-    config.separator = m_separatorEdit->text().trimmed();
+    config.byteOrder = stringToByteOrder(ui->byteOrderCombo->currentText());
+    config.frequency = ui->frequencySpin->value();
+    config.separator = ui->separatorEdit->text().trimmed();
 
     // 读取字段配置 - 从所有12列读取
     config.fields.clear();
-    for (int row = 0; row < m_fieldTable->rowCount(); ++row) {
+    for (int row = 0; row < ui->fieldTable->rowCount(); ++row) {
         FieldConfig field;
-        field.index = m_fieldTable->item(row, kFieldTableIndexColumn)->text().toInt();
-        field.elementHead = m_fieldTable->item(row, kFieldTableElementHeadColumn)->text().toInt();
-        field.name = m_fieldTable->item(row, kFieldTableNameColumn)->text();
+        field.index = ui->fieldTable->item(row, kFieldTableIndexColumn)->text().toInt();
+        field.elementHead = ui->fieldTable->item(row, kFieldTableElementHeadColumn)->text().toInt();
+        field.name = ui->fieldTable->item(row, kFieldTableNameColumn)->text();
 
         QComboBox *typeCombo = qobject_cast<QComboBox*>(
-            m_fieldTable->cellWidget(row, kFieldTableTypeColumn));
+            ui->fieldTable->cellWidget(row, kFieldTableTypeColumn));
         if (typeCombo) {
             field.type = stringToDataType(typeCombo->currentText());
         }
 
-        field.byteLength = m_fieldTable->item(row, kFieldTableByteLengthColumn)->text().toInt();
-        field.scale = m_fieldTable->item(row, kFieldTableScaleColumn)->text().toDouble();
-        field.offset = m_fieldTable->item(row, kFieldTableOffsetColumn)->text().toDouble();
-        field.unit = m_fieldTable->item(row, kFieldTableUnitColumn)->text();
-        field.maximum = m_fieldTable->item(row, kFieldTableMaxColumn)->text().toDouble();
-        field.minimum = m_fieldTable->item(row, kFieldTableMinColumn)->text().toDouble();
-        field.description = m_fieldTable->item(row, kFieldTableDescColumn)->text();
-        field.tip = m_fieldTable->item(row, kFieldTableTipColumn)->text();
+        field.byteLength = ui->fieldTable->item(row, kFieldTableByteLengthColumn)->text().toInt();
+        field.scale = ui->fieldTable->item(row, kFieldTableScaleColumn)->text().toDouble();
+        field.offset = ui->fieldTable->item(row, kFieldTableOffsetColumn)->text().toDouble();
+        field.unit = ui->fieldTable->item(row, kFieldTableUnitColumn)->text();
+        field.maximum = ui->fieldTable->item(row, kFieldTableMaxColumn)->text().toDouble();
+        field.minimum = ui->fieldTable->item(row, kFieldTableMinColumn)->text().toDouble();
+        field.description = ui->fieldTable->item(row, kFieldTableDescColumn)->text();
+        field.tip = ui->fieldTable->item(row, kFieldTableTipColumn)->text();
 
         config.fields.append(field);
     }
@@ -1001,13 +786,13 @@ void CommandSettingsDialog::setCurrentConfig(const ProtocolConfig &config)
 bool CommandSettingsDialog::validateConfig(QString *errorMsg)
 {
     // 验证协议名称
-    if (m_protocolNameEdit->text().trimmed().isEmpty()) {
+    if (ui->protocolNameEdit->text().trimmed().isEmpty()) {
         if (errorMsg) *errorMsg = "协议名称不能为空！";
         return false;
     }
 
     // 验证帧头
-    QString header = m_frameHeaderEdit->text().trimmed();
+    QString header = ui->frameHeaderEdit->text().trimmed();
     if (header.isEmpty()) {
         if (errorMsg) *errorMsg = "帧头不能为空！";
         return false;
@@ -1018,14 +803,14 @@ bool CommandSettingsDialog::validateConfig(QString *errorMsg)
     }
 
     // 验证帧尾（如果有）
-    QString footer = m_frameFooterEdit->text().trimmed();
+    QString footer = ui->frameFooterEdit->text().trimmed();
     if (!footer.isEmpty() && !validateHexString(footer)) {
         if (errorMsg) *errorMsg = "帧尾格式错误！请输入16进制字符串。";
         return false;
     }
 
     // 验证字段
-    if (m_fieldTable->rowCount() == 0) {
+    if (ui->fieldTable->rowCount() == 0) {
         if (errorMsg) *errorMsg = "至少需要配置一个数据字段！";
         return false;
     }

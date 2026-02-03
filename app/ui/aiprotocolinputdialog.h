@@ -2,18 +2,16 @@
 #define AIPROTOCOLINPUTDIALOG_H
 
 #include <QDialog>
-#include <QTextEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QProgressBar>
-#include <QDialogButtonBox>
-#include <QRadioButton>
-#include <QButtonGroup>
 #include "commandsettingsdialog.h"
 
 // 前向声明
 class ProtocolAIGenerator;
 class ProtocolCLIGenerator;
+class QButtonGroup;
+
+namespace Ui {
+class AIProtocolInputDialog;
+}
 
 /**
  * @brief AI协议输入对话框 - 收集数据并调用AI生成协议
@@ -62,19 +60,10 @@ private:
     void setUIEnabled(bool enabled);
 
 private:
-    // UI组件
-    QTextEdit *m_rawDataEdit;           // 原始16进制数据
-    QTextEdit *m_rulesEdit;             // 解析规则描述
-    QRadioButton *m_useAPIRadio;        // 使用API方式
-    QRadioButton *m_useCLIRadio;        // 使用CLI方式
-    QButtonGroup *m_methodGroup;        // 方式选择组
-    QLabel *m_methodHintLabel;          // 方式提示标签
-    QPushButton *m_pasteExampleBtn;     // 粘贴示例按钮
-    QPushButton *m_clearBtn;            // 清空按钮
-    QPushButton *m_generateBtn;         // 生成按钮
-    QPushButton *m_cancelBtn;           // 取消按钮
-    QLabel *m_statusLabel;              // 状态提示标签
-    QProgressBar *m_progressBar;        // 进度条
+    Ui::AIProtocolInputDialog *ui;
+
+    // 方式选择组
+    QButtonGroup *m_methodGroup;
 
     // AI生成器（两种方式）
     ProtocolAIGenerator *m_apiGenerator;
