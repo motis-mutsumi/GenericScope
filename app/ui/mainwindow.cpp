@@ -4,7 +4,9 @@
 #include "commandsettingsdialog.h"
 #include "deviceconfigdialog.h"
 #include "common_component/log/logmanager.h"
+#include "common_component/plot/monitordatamanager.h"
 #include "protocol/protocolmanager.h"
+#include "protocol/protocolparser.h"
 #include <QMessageBox>
 #include <QDateTime>
 #include <QSerialPortInfo>
@@ -20,9 +22,11 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_deviceManager(new DeviceManager(this))
     , m_linePlot(nullptr)
+    , m_monitorPanel(nullptr)
     , m_3dView(nullptr)
     , m_logWidget(nullptr)
     , m_dataRecorder(new DataRecorder(this))
+    , m_protocolParser(nullptr)
     , m_updateTimer(new QTimer(this))
     , m_dataTimer(new QTimer(this))
     , m_timeDisplayTimer(new QTimer(this))
@@ -313,21 +317,21 @@ void MainWindow::setup3DVisualization()
 
 void MainWindow::setupChart()
 {
-    // 创建实时曲线图
-    m_linePlot = new LinePlot(this);
-    m_linePlot->setTitle("Real-time Data");
-    m_linePlot->setAxisLabels("Time (s)", "Value");
-    m_linePlot->setMaxDataPoints(kMaxDataPoints);
-    m_linePlot->setAutoScale(true);
-
-    // 预分配容器容量以提高性能
-    m_xData.reserve(kMaxDataPoints);
-    m_yData.reserve(kMaxDataPoints);
+    // 创建监控面板（替换原有的LinePlot）
+    m_monitorPanel = new MonitorPanel(this);
 
     // 添加到图表容器
     QVBoxLayout *layout = new QVBoxLayout(ui->chartContainer);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(m_linePlot);
+    layout->setSpacing(5);
+    layout->addWidget(m_monitorPanel);
+
+    // 保留原有数据容器（其他地方可能使用）
+    m_xData.reserve(kMaxDataPoints);
+    m_yData.reserve(kMaxDataPoints);
+
+    // 旧的LinePlot已被MonitorPanel替换
+    m_linePlot = nullptr;
 }
 
 void MainWindow::setupLogWidget()
@@ -522,7 +526,30 @@ void MainWindow::onProtocolChanged(const QString &name)
     // 重建数据表格以反映新的协议字段
     rebuildDataTableFromProtocol();
 
+    // ========== 新增：重建协议解析器 ==========
+    // 删除旧解析器
+    if (m_protocolParser) {
+        delete m_protocolParser;
+        m_protocolParser = nullptr;
+    }
+
+    // 创建新解析器
+    if (ProtocolManager::instance() && ProtocolManager::instance()->hasProtocol(name)) {
+        ProtocolConfig config = ProtocolManager::instance()->getProtocol(name);
+        m_protocolParser = new ProtocolParser(config);
+        LOG_INFO(QString("Protocol parser created for: %1").arg(name));
+    } else {
+        LOG_WARNING(QString("Protocol %1 not found, parser not created").arg(name));
+    }
+    // ==========================================
+
     statusBar()->showMessage(QString("已切换到协议: %1").arg(name), 3000);
+
+    // 清空监控面板图表（协议变了，字段可能不匹配）
+    if (m_monitorPanel) {
+        m_monitorPanel->clearAllCharts();
+        LOG_INFO("Monitor panel cleared due to protocol change");
+    }
 
     LOG_INFO("Data table rebuild completed");
 }
@@ -637,12 +664,100 @@ void MainWindow::updateConnectionStatus(bool connected)
 
 void MainWindow::processData(const QByteArray &data)
 {
-    // 解析数据协议
-    // 数据格式：ROLL,PITCH,YAW,AX,AY,AZ,GX,GY,GZ,MX,MY,MZ,TEMP
+    // ========== 使用ProtocolParser动态解析 ==========
+    if (!m_protocolParser) {
+        // 如果没有解析器，尝试创建（兼容旧行为）
+        QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
+        if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
+            ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
+            m_protocolParser = new ProtocolParser(config);
+            LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
+        } else {
+            // 回退到硬编码解析（兼容性）
+            processDataLegacy(data);
+            return;
+        }
+    }
 
+    // 使用ProtocolParser解析
+    ParseResult result = m_protocolParser->parse(data);
+
+    if (!result.success) {
+        LOG_ERROR(QString("Protocol parse failed: %1").arg(result.errorMsg));
+        m_errorCount++;
+        updateIMUStatus("Error", 0, result.errorMsg);
+        return;
+    }
+
+    // 转换为double映射并分发给MonitorDataManager
+    QMap<QString, double> fieldValues;
+
+    for (auto it = result.fieldValues.begin(); it != result.fieldValues.end(); ++it) {
+        const QString &fieldName = it.key();
+        QVariant value = it.value();
+
+        // 转换为double
+        bool ok = false;
+        double doubleValue = value.toDouble(&ok);
+        if (ok) {
+            fieldValues[fieldName] = doubleValue;
+
+            // 更新数据表格（从协议获取单位）
+            QString unit = getFieldUnit(fieldName);
+            updateDataTable(fieldName, doubleValue, unit);
+        } else {
+            LOG_WARNING(QString("Field %1 cannot be converted to double: %2")
+                       .arg(fieldName).arg(value.toString()));
+        }
+    }
+
+    // 分发数据给监控面板
+    if (!fieldValues.isEmpty()) {
+        MonitorDataManager::instance()->onProtocolDataParsed(fieldValues);
+    }
+
+    // 更新3D视图（如果有Roll/Pitch/Yaw字段）
+    if (fieldValues.contains("Roll") && fieldValues.contains("Pitch") && fieldValues.contains("Yaw")) {
+        updateAttitudeDisplay(fieldValues["Roll"], fieldValues["Pitch"], fieldValues["Yaw"]);
+    }
+
+    // 录制数据
+    if (m_dataRecorder->isRecording()) {
+        QVariantMap dataMap;
+        dataMap["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+        for (auto it = fieldValues.begin(); it != fieldValues.end(); ++it) {
+            dataMap[it.key()] = it.value();
+        }
+        m_dataRecorder->recordData(dataMap);
+    }
+
+    m_packetCount++;
+}
+
+// 辅助函数：从协议配置获取字段单位
+QString MainWindow::getFieldUnit(const QString &fieldName)
+{
+    if (!m_protocolParser) {
+        return QString();
+    }
+
+    const ProtocolConfig &config = m_protocolParser->config();
+    for (const FieldConfig &field : config.fields) {
+        if (field.name == fieldName) {
+            return field.unit;
+        }
+    }
+    return QString();
+}
+
+// 兼容旧的硬编码解析（作为后备）
+void MainWindow::processDataLegacy(const QByteArray &data)
+{
+    LOG_WARNING("Using legacy hardcoded CSV parsing (no protocol configured)");
+
+    // 原有的硬编码解析逻辑
     QString dataStr = QString::fromUtf8(data).trimmed();
 
-    // 检查空数据
     if (dataStr.isEmpty()) {
         LOG_WARNING("Received empty data");
         return;
@@ -650,7 +765,6 @@ void MainWindow::processData(const QByteArray &data)
 
     QStringList values = dataStr.split(',');
 
-    // 验证数据字段数量
     if (values.size() < kExpectedDataFields) {
         LOG_ERROR(QString("Invalid data format. Expected %1 fields, got %2. Data: %3")
                   .arg(kExpectedDataFields)
@@ -661,35 +775,20 @@ void MainWindow::processData(const QByteArray &data)
         return;
     }
 
-    // 解析姿态角并进行错误检查
+    // 解析姿态角
     bool ok = true;
     double roll = values[0].toDouble(&ok);
-    if (!ok) {
-        LOG_ERROR(QString("Invalid roll value: %1").arg(values[0]));
-        m_errorCount++;
-        updateIMUStatus("Error", 0, QString("Invalid roll: %1").arg(values[0]));
-        return;
-    }
+    if (!ok) { LOG_ERROR(QString("Invalid roll: %1").arg(values[0])); return; }
 
     double pitch = values[1].toDouble(&ok);
-    if (!ok) {
-        LOG_ERROR(QString("Invalid pitch value: %1").arg(values[1]));
-        m_errorCount++;
-        updateIMUStatus("Error", 0, QString("Invalid pitch: %1").arg(values[1]));
-        return;
-    }
+    if (!ok) { LOG_ERROR(QString("Invalid pitch: %1").arg(values[1])); return; }
 
     double yaw = values[2].toDouble(&ok);
-    if (!ok) {
-        LOG_ERROR(QString("Invalid yaw value: %1").arg(values[2]));
-        m_errorCount++;
-        updateIMUStatus("Error", 0, QString("Invalid yaw: %1").arg(values[2]));
-        return;
-    }
+    if (!ok) { LOG_ERROR(QString("Invalid yaw: %1").arg(values[2])); return; }
 
     updateAttitudeDisplay(roll, pitch, yaw);
 
-    // 更新数据表格 - 添加错误检查
+    // 解析其他字段
     double accX = values[3].toDouble(&ok);
     if (!ok) { LOG_ERROR(QString("Invalid AccX: %1").arg(values[3])); return; }
     double accY = values[4].toDouble(&ok);
@@ -722,26 +821,28 @@ void MainWindow::processData(const QByteArray &data)
     updateDataTable("MagZ", magZ, "μT");
     updateDataTable("Temperature", temp, "°C");
 
-    // 添加到图表（以Roll为例）
-    double time = (QDateTime::currentMSecsSinceEpoch() - m_startTime) / 1000.0;
+    // 构建字段值映射并分发
+    QMap<QString, double> fieldValues;
+    fieldValues["Roll"] = roll;
+    fieldValues["Pitch"] = pitch;
+    fieldValues["Yaw"] = yaw;
+    fieldValues["AccelX"] = accX;
+    fieldValues["AccelY"] = accY;
+    fieldValues["AccelZ"] = accZ;
+    fieldValues["GyroX"] = gyroX;
+    fieldValues["GyroY"] = gyroY;
+    fieldValues["GyroZ"] = gyroZ;
+    fieldValues["MagX"] = magX;
+    fieldValues["MagY"] = magY;
+    fieldValues["MagZ"] = magZ;
+    fieldValues["Temperature"] = temp;
 
-    // 限制容器大小，避免内存无限增长
-    if (m_xData.size() >= kMaxDataPoints) {
-        m_xData.removeFirst();
-        m_yData.removeFirst();
-    }
-
-    m_xData.append(time);
-    m_yData.append(roll);
-
-    if (m_linePlot) {
-        m_linePlot->addDataPoint(time, roll);
-    }
+    MonitorDataManager::instance()->onProtocolDataParsed(fieldValues);
 
     // 录制数据
     if (m_dataRecorder->isRecording()) {
         QVariantMap dataMap;
-        dataMap["time"] = time;
+        dataMap["time"] = (QDateTime::currentMSecsSinceEpoch() - m_startTime) / 1000.0;
         dataMap["roll"] = roll;
         dataMap["pitch"] = pitch;
         dataMap["yaw"] = yaw;

@@ -1,6 +1,8 @@
 TEMPLATE = app
 TARGET = GenericScope
 
+QT += core gui widgets printsupport serialport network
+
 include(../global.pri)
 
 # 链接库

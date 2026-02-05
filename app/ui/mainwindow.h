@@ -7,6 +7,7 @@
 #include <QMenu>
 #include "device/devicemanager.h"
 #include "common_component/plot/lineplot.h"
+#include "common_component/plot/monitorpanel.h"
 #include "common_component/log/logwidget.h"
 #include "common_component/record/datarecorder.h"
 #include "core_plugin/core_plugins_manager/core_pluginsmanager.h"
@@ -75,6 +76,7 @@ private:
     void loadStyleSheet(bool darkMode = false);
     void updateConnectionStatus(bool connected);
     void processData(const QByteArray &data);
+    void processDataLegacy(const QByteArray &data);  // 硬编码CSV解析（后备）
     void updateAttitudeDisplay(double roll, double pitch, double yaw);
     void updateDataTable(const QString &message, const QVariant &value, const QString &unit);
     void updateIMUStatus(const QString &status, double dataRate, const QString &error);
@@ -86,6 +88,7 @@ private:
     void setupLogWidget();
     void refreshAvailablePorts();
     QString generateBuiltInStyle(bool darkMode);
+    QString getFieldUnit(const QString &fieldName);  // 从协议获取字段单位
 
 private:
     Ui::MainWindow *ui;
@@ -95,12 +98,16 @@ private:
 
     // 绘图组件
     LinePlot *m_linePlot;
+    MonitorPanel *m_monitorPanel;  // 监控面板
     IMU3DView *m_3dView;        // 3D可视化组件
     class HistogramPlot *m_histogramPlot;  // 直方图组件（前向声明）
 
     // 日志和录制
     LogWidget *m_logWidget;
     DataRecorder *m_dataRecorder;
+
+    // 协议解析
+    class ProtocolParser *m_protocolParser;  // 协议解析器（动态）
 
     // 定时器
     QTimer *m_updateTimer;      // UI 更新定时器

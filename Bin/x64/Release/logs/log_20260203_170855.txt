@@ -1,4 +1,0 @@
-[2026-02-03 17:09:05.447] [INFO] Protocol changed to: Default_Protocol
-[2026-02-03 17:09:05.447] [INFO] Starting rebuildDataTableFromProtocol
-[2026-02-03 17:09:05.449] [INFO] Rebuilding data table from protocol: Default_Protocol with 10 fields
-[2026-02-03 17:09:05.449] [INFO] Data table rebuild completed
