@@ -31,7 +31,6 @@
      <number>0</number>
     </property>
     <item>
-     <!-- 顶部标题栏 -->
      <widget class="QWidget" name="titleBarWidget" native="true">
       <property name="minimumSize">
        <size>
@@ -62,7 +61,6 @@
         <number>0</number>
        </property>
        <item>
-        <!-- 品牌 Logo -->
         <widget class="QLabel" name="brandLabel">
          <property name="text">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;GENERIC&lt;/span&gt;&lt;span style=&quot; font-size:18pt; font-weight:600; color:#ff5722;&quot;&gt;SCOPE&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -83,7 +81,6 @@
         </spacer>
        </item>
        <item>
-        <!-- 应用标题 -->
         <widget class="QLabel" name="appTitleLabel">
          <property name="text">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:16pt; font-weight:600;&quot;&gt;DS_GenericScope&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -107,7 +104,6 @@
         </spacer>
        </item>
        <item>
-        <!-- 设置按钮 -->
         <widget class="QToolButton" name="settingsButton">
          <property name="minimumSize">
           <size>
@@ -127,7 +123,6 @@
         </widget>
        </item>
        <item>
-        <!-- 暗色模式切换 -->
         <widget class="QToolButton" name="darkModeButton">
          <property name="minimumSize">
           <size>
@@ -138,14 +133,14 @@
          <property name="text">
           <string>🌙</string>
          </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
          <property name="iconSize">
           <size>
            <width>24</width>
            <height>24</height>
           </size>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -153,7 +148,6 @@
      </widget>
     </item>
     <item>
-     <!-- 设备控制栏 -->
      <widget class="QWidget" name="controlBarWidget" native="true">
       <property name="minimumSize">
        <size>
@@ -184,7 +178,6 @@
         <number>10</number>
        </property>
        <item>
-        <!-- COM 端口选择 -->
         <widget class="QComboBox" name="portComboBox">
          <property name="minimumSize">
           <size>
@@ -230,7 +223,6 @@
         </widget>
        </item>
        <item>
-        <!-- 波特率选择 -->
         <widget class="QComboBox" name="baudRateComboBox">
          <property name="minimumSize">
           <size>
@@ -266,7 +258,6 @@
         </widget>
        </item>
        <item>
-        <!-- 连接开关按钮 -->
         <widget class="QPushButton" name="connectToggleButton">
          <property name="minimumSize">
           <size>
@@ -296,7 +287,6 @@
         </spacer>
        </item>
        <item>
-        <!-- RecordLog 复选框 -->
         <widget class="QCheckBox" name="recordLogCheckBox">
          <property name="text">
           <string>RecordLog</string>
@@ -304,7 +294,6 @@
         </widget>
        </item>
        <item>
-        <!-- 菜单按钮 -->
         <widget class="QToolButton" name="menuButton">
          <property name="minimumSize">
           <size>
@@ -324,12 +313,10 @@
      </widget>
     </item>
     <item>
-     <!-- 主体三栏布局 -->
      <widget class="QSplitter" name="mainSplitter">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <!-- 左侧：数据表格面板 -->
       <widget class="QWidget" name="leftPanel" native="true">
        <property name="minimumSize">
         <size>
@@ -354,7 +341,6 @@
          <number>5</number>
         </property>
         <item>
-         <!-- 筛选器工具栏 -->
          <widget class="QWidget" name="filterToolbar" native="true">
           <property name="minimumSize">
            <size>
@@ -393,7 +379,6 @@
          </widget>
         </item>
         <item>
-         <!-- 数据表格 -->
          <widget class="QTableWidget" name="dataTableWidget">
           <property name="columnCount">
            <number>3</number>
@@ -417,7 +402,6 @@
         </item>
        </layout>
       </widget>
-      <!-- 中间：3D 可视化面板 -->
       <widget class="QWidget" name="centerPanel" native="true">
        <property name="minimumSize">
         <size>
@@ -442,7 +426,6 @@
          <number>10</number>
         </property>
         <item>
-         <!-- 姿态角度显示 -->
          <widget class="QWidget" name="attitudeWidget" native="true">
           <property name="minimumSize">
            <size>
@@ -567,7 +550,6 @@
          </widget>
         </item>
         <item>
-         <!-- 3D 可视化容器 -->
          <widget class="QWidget" name="visualization3DContainer" native="true">
           <property name="minimumSize">
            <size>
@@ -578,7 +560,6 @@
          </widget>
         </item>
         <item>
-         <!-- IMU 状态 -->
          <widget class="QGroupBox" name="imuStatusGroupBox">
           <property name="minimumSize">
            <size>
@@ -616,7 +597,6 @@
         </item>
        </layout>
       </widget>
-      <!-- 右侧：图表面板 -->
       <widget class="QWidget" name="rightPanel" native="true">
        <property name="minimumSize">
         <size>
@@ -641,134 +621,6 @@
          <number>10</number>
         </property>
         <item>
-         <!-- 图表参数设置 -->
-         <widget class="QWidget" name="chartParamsWidget" native="true">
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>50</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>50</height>
-           </size>
-          </property>
-          <layout class="QHBoxLayout" name="chartParamsLayout">
-           <item>
-            <widget class="QLabel" name="chartIconLabel">
-             <property name="text">
-              <string>📊</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <spacer name="chartParamsSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QLabel" name="xRangeLabel">
-             <property name="text">
-              <string>X_Range</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="xRangeComboBox">
-             <property name="minimumSize">
-              <size>
-               <width>80</width>
-               <height>30</height>
-              </size>
-             </property>
-             <item>
-              <property name="text">
-               <string>10</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>30</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>60</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>120</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="xRangeUnitLabel">
-             <property name="text">
-              <string>s</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="xDotLabel">
-             <property name="text">
-              <string>X_Dot</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="xDotComboBox">
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>30</height>
-              </size>
-             </property>
-             <item>
-              <property name="text">
-               <string>1</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>2</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>5</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>10</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item>
-            <widget class="QToolButton" name="chartSettingsButton">
-             <property name="text">
-              <string>⚙</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <!-- 图表显示容器 -->
          <widget class="QWidget" name="chartContainer" native="true">
           <property name="minimumSize">
            <size>
@@ -779,7 +631,6 @@
          </widget>
         </item>
         <item>
-         <!-- 时间戳显示 -->
          <widget class="QWidget" name="timestampWidget" native="true">
           <property name="minimumSize">
            <size>

@@ -42,8 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_lastDataRateTime(0)
     , m_lastPacketCount(0)
     , m_isDarkMode(false)
-    , m_xRange(kDefaultXRange)
-    , m_xDot(kDefaultXDot)
 {
     ui->setupUi(this);
     setupUI();
@@ -51,6 +49,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupMenu();
     loadPlugins();
     loadStyleSheet(m_isDarkMode);
+
+    // 预加载协议配置（修复：即使不打开协议配置对话框，也能添加图表）
+    preloadProtocols();
 
     // 初始状态
     updateConnectionStatus(false);
@@ -84,8 +85,6 @@ void MainWindow::setupUI()
     setupLogWidget();
 
     // 设置初始值
-    ui->xRangeComboBox->setCurrentText("60");
-    ui->xDotComboBox->setCurrentText("2");
     ui->portComboBox->setCurrentText("COM7");
     ui->baudRateComboBox->setCurrentText("115200");
 
@@ -152,11 +151,9 @@ void MainWindow::setupMenu()
         QMessageBox::information(this, "Export", "Export data functionality");
     });
     m_contextMenu->addAction("Clear Chart", this, [this]() {
-        if (m_linePlot) {
-            m_linePlot->clearData();
+        if (m_monitorPanel) {
+            m_monitorPanel->clearAllCharts();
         }
-        m_xData.clear();
-        m_yData.clear();
         m_dataCounter = 0;
     });
     m_contextMenu->addSeparator();
@@ -173,6 +170,23 @@ void MainWindow::loadPlugins()
     QString pluginDir = Config::instance()->dirs.pluginDir;
     int count = Core_PluginsManager::instance()->loadAllPlugins(pluginDir);
     LOG_INFO(QString("Loaded %1 plugins").arg(count));
+}
+
+void MainWindow::preloadProtocols()
+{
+    // 预加载协议：创建临时的CommandSettingsDialog来触发协议加载
+    // 这样即使用户不打开协议配置对话框，也能直接添加图表
+    CommandSettingsDialog tempDialog(this);
+    // 不需要显示对话框，构造函数已经调用了loadProtocols()和syncToProtocolManager()
+
+    // 记录加载结果
+    ProtocolManager *manager = ProtocolManager::instance();
+    int protocolCount = manager->getProtocolNames().size();
+    if (protocolCount > 0) {
+        qDebug() << QString("[MainWindow] 预加载了 %1 个协议配置").arg(protocolCount);
+    } else {
+        qDebug() << "[MainWindow] 未找到已保存的协议配置";
+    }
 }
 
 void MainWindow::loadStyleSheet(bool darkMode)
@@ -325,10 +339,6 @@ void MainWindow::setupChart()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(5);
     layout->addWidget(m_monitorPanel);
-
-    // 保留原有数据容器（其他地方可能使用）
-    m_xData.reserve(kMaxDataPoints);
-    m_yData.reserve(kMaxDataPoints);
 
     // 旧的LinePlot已被MonitorPanel替换
     m_linePlot = nullptr;
@@ -565,46 +575,6 @@ void MainWindow::on_filterButton_clicked()
 {
     // TODO: 实现数据过滤功能
     QMessageBox::information(this, "Filter", "Data filter functionality (To be implemented)");
-}
-
-void MainWindow::on_xRangeComboBox_currentTextChanged(const QString &text)
-{
-    m_xRange = text.toInt();
-    if (m_linePlot) {
-        // 根据 X 范围和数据采样率计算最大点数
-        // 数据采样率 = 1000ms / kDataTimerInterval = 10 Hz
-        int samplingRate = 1000 / kDataTimerInterval;  // 每秒点数
-        int maxPoints = m_xRange * samplingRate / m_xDot;  // 考虑点密度
-        m_linePlot->setMaxDataPoints(maxPoints);
-    }
-    LOG_DEBUG(QString("X Range changed to: %1s, max points: %2")
-              .arg(m_xRange)
-              .arg(m_xRange * (1000 / kDataTimerInterval) / m_xDot));
-}
-
-void MainWindow::on_xDotComboBox_currentTextChanged(const QString &text)
-{
-    m_xDot = text.toInt();
-    if (m_linePlot) {
-        // 更新最大点数（考虑点密度）
-        int samplingRate = 1000 / kDataTimerInterval;  // 每秒点数
-        int maxPoints = m_xRange * samplingRate / m_xDot;
-        m_linePlot->setMaxDataPoints(maxPoints);
-    }
-    LOG_DEBUG(QString("X Dot changed to: %1, max points: %2")
-              .arg(m_xDot)
-              .arg(m_xRange * (1000 / kDataTimerInterval) / m_xDot));
-}
-
-void MainWindow::on_chartSettingsButton_clicked()
-{
-    // TODO: 打开图表设置对话框
-    QMessageBox::information(this, "Chart Settings",
-        "Chart configuration\n"
-        "- Y axis range\n"
-        "- Line colors\n"
-        "- Grid options\n"
-        "(To be implemented)");
 }
 
 void MainWindow::onDeviceConnectionChanged(bool connected)

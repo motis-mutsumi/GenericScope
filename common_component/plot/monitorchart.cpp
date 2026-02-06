@@ -44,6 +44,7 @@ void MonitorChart::setupUI()
     // 标题栏
     QString title = m_unit.isEmpty() ? m_fieldName : QString("%1 (%2)").arg(m_fieldName, m_unit);
     QLabel *titleLabel = new QLabel(title, this);
+    titleLabel->setObjectName("titleLabel");  // 设置对象名，方便后续查找
     QFont font = titleLabel->font();
     font.setBold(true);
     titleLabel->setFont(font);
@@ -52,6 +53,8 @@ void MonitorChart::setupUI()
     // 创建QCustomPlot
     m_plot = new QCustomPlot(this);
     m_plot->setFixedHeight(200);
+    m_plot->setContextMenuPolicy(Qt::NoContextMenu);  // 不处理右键，让事件传递给父控件
+    m_plot->installEventFilter(this);  // 安装事件过滤器
     mainLayout->addWidget(m_plot);
 
     // 配置图表
@@ -60,6 +63,9 @@ void MonitorChart::setupUI()
     // 设置边框
     setFrameShape(QFrame::StyledPanel);
     setFrameShadow(QFrame::Raised);
+
+    // 启用右键菜单
+    setContextMenuPolicy(Qt::DefaultContextMenu);
 }
 
 void MonitorChart::setupPlot()
@@ -77,8 +83,16 @@ void MonitorChart::setupPlot()
     m_plot->xAxis->setLabel("时间 (秒)");
     m_plot->yAxis->setLabel(m_unit.isEmpty() ? "数值" : m_unit);
 
-    // X轴范围（负数表示过去时间，0表示当前）
-    m_plot->xAxis->setRange(-m_xRangeSeconds, 0);
+    // X轴范围（0表示最旧数据，m_xRangeSeconds表示最新数据）
+    m_plot->xAxis->setRange(0, m_xRangeSeconds);
+
+    // 使用固定刻度间隔来精确控制刻度数量
+    QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
+    // 计算刻度间隔：范围 / (刻度数 - 1)
+    double tickStep = (m_xTickCount > 1) ? (double)m_xRangeSeconds / (m_xTickCount - 1) : m_xRangeSeconds;
+    fixedTicker->setTickStep(tickStep);
+    fixedTicker->setScaleStrategy(QCPAxisTickerFixed::ssMultiples);
+    m_plot->xAxis->setTicker(fixedTicker);
 
     // 启用抗锯齿
     m_plot->setAntialiasedElements(QCP::aeAll);
@@ -86,8 +100,8 @@ void MonitorChart::setupPlot()
     // 设置背景色
     m_plot->setBackground(QBrush(Qt::white));
 
-    // 允许用户交互
-    m_plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    // 禁用鼠标交互（不需要拖拽和缩放）
+    m_plot->setInteractions(QCP::iNone);
 }
 
 void MonitorChart::createActions()
@@ -120,6 +134,17 @@ void MonitorChart::contextMenuEvent(QContextMenuEvent *event)
     menu.exec(event->globalPos());
 }
 
+bool MonitorChart::eventFilter(QObject *watched, QEvent *event)
+{
+    // 拦截QCustomPlot上的右键事件
+    if (watched == m_plot && event->type() == QEvent::ContextMenu) {
+        QContextMenuEvent *contextEvent = static_cast<QContextMenuEvent*>(event);
+        contextMenuEvent(contextEvent);  // 转发到自己的contextMenuEvent
+        return true;  // 事件已处理
+    }
+    return QFrame::eventFilter(watched, event);
+}
+
 void MonitorChart::onDeleteAction()
 {
     emit deleteRequested(this);
@@ -145,20 +170,90 @@ void MonitorChart::onClearAction()
 
 void MonitorChart::setFieldName(const QString &fieldName)
 {
+    if (m_fieldName == fieldName) {
+        return;  // 没有变化
+    }
+
     m_fieldName = fieldName;
-    // TODO: 更新标题
+
+    // 更新标题
+    updateTitle();
+
+    // 清空旧数据（字段变了，旧数据无意义）
+    clearData();
+
+    qDebug() << QString("[监控图表] 字段已更改为: %1").arg(m_fieldName);
+}
+
+void MonitorChart::setUnit(const QString &unit)
+{
+    if (m_unit == unit) {
+        return;
+    }
+
+    m_unit = unit;
+
+    // 更新标题和Y轴标签
+    updateTitle();
+
+    if (m_plot) {
+        m_plot->yAxis->setLabel(m_unit.isEmpty() ? "数值" : m_unit);
+        m_plot->replot();
+    }
+
+    qDebug() << QString("[%1] 单位已更改为: %2").arg(m_fieldName).arg(m_unit);
 }
 
 void MonitorChart::setXRange(int seconds)
 {
+    if (m_xRangeSeconds == seconds) {
+        return;
+    }
+
     m_xRangeSeconds = seconds;
-    // TODO: 更新图表
+
+    // 清理超出新范围的旧数据
+    if (!m_timestamps.isEmpty()) {
+        qint64 latestTime = m_timestamps.last();
+        qint64 cutoffTime = latestTime - m_xRangeSeconds * 1000;
+
+        while (!m_timestamps.isEmpty() && m_timestamps.first() < cutoffTime) {
+            m_timestamps.removeFirst();
+            m_values.removeFirst();
+        }
+    }
+
+    // 更新图表
+    updatePlot();
+
+    qDebug() << QString("[%1] X轴范围已更改为: %2秒").arg(m_fieldName).arg(m_xRangeSeconds);
 }
 
 void MonitorChart::setXTickCount(int count)
 {
+    if (m_xTickCount == count) {
+        return;
+    }
+
     m_xTickCount = count;
-    // TODO: 更新图表
+
+    // 更新图表
+    updatePlot();
+
+    qDebug() << QString("[%1] X轴刻度数已更改为: %2").arg(m_fieldName).arg(m_xTickCount);
+}
+
+void MonitorChart::updateTitle()
+{
+    QString title = m_unit.isEmpty()
+                    ? m_fieldName
+                    : QString("%1 (%2)").arg(m_fieldName, m_unit);
+
+    // 找到标题Label并更新
+    QLabel *titleLabel = findChild<QLabel*>("titleLabel");
+    if (titleLabel) {
+        titleLabel->setText(title);
+    }
 }
 
 void MonitorChart::appendData(double value, qint64 timestamp)
@@ -250,24 +345,28 @@ void MonitorChart::updatePlot()
     qint64 latestTime = m_timestamps.last();
 
     for (int i = 0; i < m_timestamps.size(); ++i) {
-        // 相对时间（秒），负数表示过去的时间
-        double relativeTime = (m_timestamps[i] - latestTime) / 1000.0;
-        xData.append(relativeTime);
+        // 相对时间（秒），从0开始递增（0=最旧，m_xRangeSeconds=最新）
+        double relativeTime = (latestTime - m_timestamps[i]) / 1000.0;
+        xData.append(m_xRangeSeconds - relativeTime);  // 反转顺序，让最新数据在右侧
         yData.append(m_values[i]);
     }
 
     // 更新QCustomPlot数据
     m_plot->graph(0)->setData(xData, yData);
 
-    // 设置X轴范围
-    m_plot->xAxis->setRange(-m_xRangeSeconds, 0);
+    // 设置X轴范围（0到m_xRangeSeconds）
+    m_plot->xAxis->setRange(0, m_xRangeSeconds);
 
     // Y轴自动缩放
     m_plot->graph(0)->rescaleValueAxis();
 
-    // 设置X轴刻度数量
-    QSharedPointer<QCPAxisTicker> ticker = m_plot->xAxis->ticker();
-    ticker->setTickCount(m_xTickCount);
+    // 使用固定刻度间隔来精确控制刻度数量
+    QSharedPointer<QCPAxisTickerFixed> fixedTicker(new QCPAxisTickerFixed);
+    // 计算刻度间隔：范围 / (刻度数 - 1)
+    double tickStep = (m_xTickCount > 1) ? (double)m_xRangeSeconds / (m_xTickCount - 1) : m_xRangeSeconds;
+    fixedTicker->setTickStep(tickStep);
+    fixedTicker->setScaleStrategy(QCPAxisTickerFixed::ssMultiples);
+    m_plot->xAxis->setTicker(fixedTicker);
 
     // 重绘
     m_plot->replot();

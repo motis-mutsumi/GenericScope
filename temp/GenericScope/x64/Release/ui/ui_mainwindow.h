@@ -85,16 +85,6 @@ public:
     QLabel *imuErrorLabel;
     QWidget *rightPanel;
     QVBoxLayout *rightPanelLayout;
-    QWidget *chartParamsWidget;
-    QHBoxLayout *chartParamsLayout;
-    QLabel *chartIconLabel;
-    QSpacerItem *chartParamsSpacer;
-    QLabel *xRangeLabel;
-    QComboBox *xRangeComboBox;
-    QLabel *xRangeUnitLabel;
-    QLabel *xDotLabel;
-    QComboBox *xDotComboBox;
-    QToolButton *chartSettingsButton;
     QWidget *chartContainer;
     QWidget *timestampWidget;
     QHBoxLayout *timestampLayout;
@@ -153,8 +143,8 @@ public:
         darkModeButton = new QToolButton(titleBarWidget);
         darkModeButton->setObjectName(QString::fromUtf8("darkModeButton"));
         darkModeButton->setMinimumSize(QSize(40, 40));
-        darkModeButton->setCheckable(true);
         darkModeButton->setIconSize(QSize(24, 24));
+        darkModeButton->setCheckable(true);
 
         titleBarLayout->addWidget(darkModeButton);
 
@@ -389,64 +379,6 @@ public:
         rightPanelLayout->setSpacing(10);
         rightPanelLayout->setObjectName(QString::fromUtf8("rightPanelLayout"));
         rightPanelLayout->setContentsMargins(10, 10, 10, 10);
-        chartParamsWidget = new QWidget(rightPanel);
-        chartParamsWidget->setObjectName(QString::fromUtf8("chartParamsWidget"));
-        chartParamsWidget->setMinimumSize(QSize(0, 50));
-        chartParamsWidget->setMaximumSize(QSize(16777215, 50));
-        chartParamsLayout = new QHBoxLayout(chartParamsWidget);
-        chartParamsLayout->setObjectName(QString::fromUtf8("chartParamsLayout"));
-        chartIconLabel = new QLabel(chartParamsWidget);
-        chartIconLabel->setObjectName(QString::fromUtf8("chartIconLabel"));
-
-        chartParamsLayout->addWidget(chartIconLabel);
-
-        chartParamsSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-        chartParamsLayout->addItem(chartParamsSpacer);
-
-        xRangeLabel = new QLabel(chartParamsWidget);
-        xRangeLabel->setObjectName(QString::fromUtf8("xRangeLabel"));
-
-        chartParamsLayout->addWidget(xRangeLabel);
-
-        xRangeComboBox = new QComboBox(chartParamsWidget);
-        xRangeComboBox->addItem(QString());
-        xRangeComboBox->addItem(QString());
-        xRangeComboBox->addItem(QString());
-        xRangeComboBox->addItem(QString());
-        xRangeComboBox->setObjectName(QString::fromUtf8("xRangeComboBox"));
-        xRangeComboBox->setMinimumSize(QSize(80, 30));
-
-        chartParamsLayout->addWidget(xRangeComboBox);
-
-        xRangeUnitLabel = new QLabel(chartParamsWidget);
-        xRangeUnitLabel->setObjectName(QString::fromUtf8("xRangeUnitLabel"));
-
-        chartParamsLayout->addWidget(xRangeUnitLabel);
-
-        xDotLabel = new QLabel(chartParamsWidget);
-        xDotLabel->setObjectName(QString::fromUtf8("xDotLabel"));
-
-        chartParamsLayout->addWidget(xDotLabel);
-
-        xDotComboBox = new QComboBox(chartParamsWidget);
-        xDotComboBox->addItem(QString());
-        xDotComboBox->addItem(QString());
-        xDotComboBox->addItem(QString());
-        xDotComboBox->addItem(QString());
-        xDotComboBox->setObjectName(QString::fromUtf8("xDotComboBox"));
-        xDotComboBox->setMinimumSize(QSize(60, 30));
-
-        chartParamsLayout->addWidget(xDotComboBox);
-
-        chartSettingsButton = new QToolButton(chartParamsWidget);
-        chartSettingsButton->setObjectName(QString::fromUtf8("chartSettingsButton"));
-
-        chartParamsLayout->addWidget(chartSettingsButton);
-
-
-        rightPanelLayout->addWidget(chartParamsWidget);
-
         chartContainer = new QWidget(rightPanel);
         chartContainer->setObjectName(QString::fromUtf8("chartContainer"));
         chartContainer->setMinimumSize(QSize(0, 300));
@@ -542,21 +474,6 @@ public:
         imuStatusLabel->setText(QCoreApplication::translate("MainWindow", "Status: Ready", nullptr));
         imuDataRateLabel->setText(QCoreApplication::translate("MainWindow", "Data Rate: 0 Hz", nullptr));
         imuErrorLabel->setText(QCoreApplication::translate("MainWindow", "Error: None", nullptr));
-        chartIconLabel->setText(QCoreApplication::translate("MainWindow", "\360\237\223\212", nullptr));
-        xRangeLabel->setText(QCoreApplication::translate("MainWindow", "X_Range", nullptr));
-        xRangeComboBox->setItemText(0, QCoreApplication::translate("MainWindow", "10", nullptr));
-        xRangeComboBox->setItemText(1, QCoreApplication::translate("MainWindow", "30", nullptr));
-        xRangeComboBox->setItemText(2, QCoreApplication::translate("MainWindow", "60", nullptr));
-        xRangeComboBox->setItemText(3, QCoreApplication::translate("MainWindow", "120", nullptr));
-
-        xRangeUnitLabel->setText(QCoreApplication::translate("MainWindow", "s", nullptr));
-        xDotLabel->setText(QCoreApplication::translate("MainWindow", "X_Dot", nullptr));
-        xDotComboBox->setItemText(0, QCoreApplication::translate("MainWindow", "1", nullptr));
-        xDotComboBox->setItemText(1, QCoreApplication::translate("MainWindow", "2", nullptr));
-        xDotComboBox->setItemText(2, QCoreApplication::translate("MainWindow", "5", nullptr));
-        xDotComboBox->setItemText(3, QCoreApplication::translate("MainWindow", "10", nullptr));
-
-        chartSettingsButton->setText(QCoreApplication::translate("MainWindow", "\342\232\231", nullptr));
         startTimeLabel->setText(QCoreApplication::translate("MainWindow", "00:00:00.000", nullptr));
         timeLabel->setText(QCoreApplication::translate("MainWindow", "Time", nullptr));
         endTimeLabel->setText(QCoreApplication::translate("MainWindow", "00:00:00.000", nullptr));

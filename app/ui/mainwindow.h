@@ -54,11 +54,6 @@ private slots:
     // 协议管理
     void onProtocolChanged(const QString &name);
 
-    // 图表参数
-    void on_xRangeComboBox_currentTextChanged(const QString &text);
-    void on_xDotComboBox_currentTextChanged(const QString &text);
-    void on_chartSettingsButton_clicked();
-
     // 设备回调
     void onDeviceConnectionChanged(bool connected);
     void onDeviceDataReceived(const QByteArray &data);
@@ -73,6 +68,7 @@ private:
     void setupConnections();
     void setupMenu();
     void loadPlugins();
+    void preloadProtocols();  // 预加载协议配置（修复bug）
     void loadStyleSheet(bool darkMode = false);
     void updateConnectionStatus(bool connected);
     void processData(const QByteArray &data);
@@ -119,8 +115,6 @@ private:
     QMenu *m_settingsMenu;      // 设置菜单
 
     // 数据
-    QVector<double> m_xData;
-    QVector<double> m_yData;
     int m_dataCounter;
 
     // 姿态数据
@@ -137,8 +131,6 @@ private:
 
     // 配置
     bool m_isDarkMode;
-    int m_xRange;      // X轴范围（秒）
-    int m_xDot;        // X轴点密度
 
     // 数据表格行索引映射
     QMap<QString, int> m_tableRowMap;
@@ -148,9 +140,6 @@ private:
     static constexpr int kDataTimerInterval = 100;       // 数据更新定时器间隔（毫秒）
     static constexpr int kTimeDisplayInterval = 100;     // 时间显示定时器间隔（毫秒）
     static constexpr int kExpectedDataFields = 13;       // 期望的数据字段数
-    static constexpr int kDefaultXRange = 60;            // 默认X轴范围（秒）
-    static constexpr int kDefaultXDot = 2;               // 默认X轴点密度
-    static constexpr int kMaxDataPoints = 1000;          // 最大数据点数
     static constexpr int kDataTableMessageColumn = 0;    // 数据表格消息列
     static constexpr int kDataTableValueColumn = 1;      // 数据表格值列
     static constexpr int kDataTableUnitColumn = 2;       // 数据表格单位列

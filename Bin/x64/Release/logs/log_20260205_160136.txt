@@ -1,0 +1,22 @@
+[2026-02-05 16:01:36.125] [INFO] Log system initialized
+[2026-02-05 16:01:36.691] [INFO] Starting rebuildDataTableFromProtocol
+[2026-02-05 16:01:36.692] [INFO] No protocol configured, using default IMU fields
+[2026-02-05 16:01:37.092] [INFO] GenericScope started
+[2026-02-05 16:01:37.235] [INFO] Loaded 2 plugins
+[2026-02-05 16:01:37.539] [INFO] GenericScope started
+[2026-02-05 16:01:49.405] [INFO] Protocol changed to: Generated_Protocol
+[2026-02-05 16:01:49.406] [INFO] Starting rebuildDataTableFromProtocol
+[2026-02-05 16:01:49.406] [INFO] Rebuilding data table from protocol: Generated_Protocol with 11 fields
+[2026-02-05 16:01:49.406] [INFO] Protocol parser created for: Generated_Protocol
+[2026-02-05 16:01:49.407] [INFO] Monitor panel cleared due to protocol change
+[2026-02-05 16:01:49.407] [INFO] Data table rebuild completed
+[2026-02-05 16:01:50.702] [INFO] Command settings saved
+[2026-02-05 16:01:50.703] [INFO] Starting rebuildDataTableFromProtocol
+[2026-02-05 16:01:50.704] [INFO] Rebuilding data table from protocol: Generated_Protocol with 11 fields
+[2026-02-05 16:01:50.708] [INFO] Protocol changed to: Generated_Protocol
+[2026-02-05 16:01:50.709] [INFO] Starting rebuildDataTableFromProtocol
+[2026-02-05 16:01:50.710] [INFO] Rebuilding data table from protocol: Generated_Protocol with 11 fields
+[2026-02-05 16:01:50.710] [INFO] Protocol parser created for: Generated_Protocol
+[2026-02-05 16:01:50.711] [INFO] Monitor panel cleared due to protocol change
+[2026-02-05 16:01:50.711] [INFO] Data table rebuild completed
+[2026-02-05 16:02:43.867] [INFO] GenericScope stopped

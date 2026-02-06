@@ -148,6 +148,55 @@ void MonitorPanel::onChartDeleteRequested(MonitorChart *chart)
 
 void MonitorPanel::onChartEditRequested(MonitorChart *chart)
 {
-    // TODO: TASK-008中实现
-    // 弹出编辑对话框
+    if (!chart) {
+        return;
+    }
+
+    // 获取当前激活的协议配置
+    auto *protocolManager = ProtocolManager::instance();
+    if (!protocolManager) {
+        QMessageBox::warning(this, "提示", "协议管理器未初始化");
+        return;
+    }
+
+    // 获取当前协议名称
+    QString currentProtocolName = protocolManager->getCurrentProtocol();
+    if (currentProtocolName.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请先配置并激活协议");
+        return;
+    }
+
+    // 获取协议配置
+    ProtocolConfig currentProtocol = protocolManager->getProtocol(currentProtocolName);
+    if (currentProtocol.name.isEmpty()) {
+        QMessageBox::warning(this, "提示", "协议配置无效");
+        return;
+    }
+
+    // 构建字段列表
+    QMap<QString, QString> fields;
+    for (const auto &field : currentProtocol.fields) {
+        fields[field.name] = field.unit;
+    }
+
+    if (fields.isEmpty()) {
+        QMessageBox::warning(this, "提示", "当前协议没有可监控的字段");
+        return;
+    }
+
+    // 创建配置对话框（编辑模式）
+    MonitorConfigDialog dialog(this);
+    dialog.setAvailableFields(fields);
+    dialog.setEditMode(chart->fieldName(),
+                       chart->unit(),
+                       chart->xRangeSeconds(),
+                       chart->xTickCount());
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // 更新图表配置
+        chart->setFieldName(dialog.selectedField());
+        chart->setUnit(dialog.selectedUnit());
+        chart->setXRange(dialog.xRangeSeconds());
+        chart->setXTickCount(dialog.xTickCount());
+    }
 }

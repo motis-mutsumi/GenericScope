@@ -33,6 +33,12 @@ public:
     void setFieldName(const QString &fieldName);
 
     /**
+     * @brief 设置单位
+     * @param unit 新单位
+     */
+    void setUnit(const QString &unit);
+
+    /**
      * @brief 设置X轴时间范围
      * @param seconds 时间范围（秒）
      */
@@ -68,6 +74,7 @@ signals:
 
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void onDataReceived(const QString &fieldName, double value, qint64 timestamp);
@@ -81,6 +88,7 @@ private:
     void setupUI();
     void setupPlot();  // 配置QCustomPlot样式
     void createActions();
+    void updateTitle();  // 更新标题
 
     QString m_fieldName;               // 字段名
     QString m_unit;                    // 单位
