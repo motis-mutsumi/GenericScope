@@ -34,7 +34,7 @@ public:
 
     // 设备配置
     struct Device {
-        QString type;           // 设备类型（UART/TCP/MODBUS）
+        QString type;           // 设备类型（UART/TCP/MODBUS/UDP）
         QString port;           // 串口号或IP地址
         int baudRate;           // 波特率
         int dataBits;           // 数据位
@@ -43,6 +43,10 @@ public:
         int timeout;            // 超时时间
         bool autoPolling;       // 自动轮询
         int pollingInterval;    // 轮询间隔
+        // UDP 专属
+        QString udpRemoteIp;    // UDP 远端 IP
+        int udpRemotePort;      // UDP 远端端口
+        int udpLocalPort;       // UDP 本地监听端口
     };
 
     // 算法参数

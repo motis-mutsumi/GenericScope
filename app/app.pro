@@ -49,6 +49,9 @@ FORMS += \
 RESOURCES += \
     resources.qrc
 
+# 静态库宏，避免 __declspec(dllimport) 导致链接失败
+DEFINES += TRANSFER_LIBRARY
+
 # 包含路径
 INCLUDEPATH += \
     $$PWD/../algorithm \

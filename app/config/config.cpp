@@ -52,6 +52,9 @@ void Config::loadDefaults()
     device.timeout = 1000;
     device.autoPolling = false;
     device.pollingInterval = 100;
+    device.udpRemoteIp = "192.168.1.100";
+    device.udpRemotePort = 8888;
+    device.udpLocalPort = 9999;
 
     // 算法参数
     algorithmParams.filterType = 0;
@@ -93,6 +96,9 @@ void Config::load()
     device.timeout = m_settings->value("timeout", device.timeout).toInt();
     device.autoPolling = m_settings->value("autoPolling", device.autoPolling).toBool();
     device.pollingInterval = m_settings->value("pollingInterval", device.pollingInterval).toInt();
+    device.udpRemoteIp = m_settings->value("udpRemoteIp", device.udpRemoteIp).toString();
+    device.udpRemotePort = m_settings->value("udpRemotePort", device.udpRemotePort).toInt();
+    device.udpLocalPort = m_settings->value("udpLocalPort", device.udpLocalPort).toInt();
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");
@@ -143,6 +149,9 @@ void Config::save()
     m_settings->setValue("timeout", device.timeout);
     m_settings->setValue("autoPolling", device.autoPolling);
     m_settings->setValue("pollingInterval", device.pollingInterval);
+    m_settings->setValue("udpRemoteIp", device.udpRemoteIp);
+    m_settings->setValue("udpRemotePort", device.udpRemotePort);
+    m_settings->setValue("udpLocalPort", device.udpLocalPort);
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");

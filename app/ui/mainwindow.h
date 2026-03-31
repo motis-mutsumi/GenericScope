@@ -38,6 +38,7 @@ private slots:
     void on_connectToggleButton_toggled(bool checked);
     void on_portComboBox_currentTextChanged(const QString &text);
     void on_baudRateComboBox_currentTextChanged(const QString &text);
+    void on_transferTypeComboBox_currentIndexChanged(int index);
 
     // 录制控制
     void on_recordLogCheckBox_toggled(bool checked);

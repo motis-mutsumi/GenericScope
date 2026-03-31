@@ -89,10 +89,84 @@ void AlgorithmProcessor::calculateStatistics(const QVector<double> &data,
 
 QVector<double> AlgorithmProcessor::fftTransform(const QVector<double> &data)
 {
-    // TODO: 实现 FFT 算法或集成第三方库（如 FFTW）
-    // 这里返回空向量作为占位符
-    Q_UNUSED(data);
-    return QVector<double>();
+    if (data.isEmpty()) {
+        return QVector<double>();
+    }
+
+    int n = data.size();
+
+    // 填充到2的幂
+    int fftSize = 1;
+    while (fftSize < n) {
+        fftSize <<= 1;
+    }
+
+    // 创建复数数组（实部和虚部）
+    QVector<double> real(fftSize, 0.0);
+    QVector<double> imag(fftSize, 0.0);
+
+    // 复制输入数据
+    for (int i = 0; i < n; ++i) {
+        real[i] = data[i];
+    }
+
+    // 位反转排序
+    int bits = 0;
+    int temp = fftSize;
+    while (temp > 1) {
+        bits++;
+        temp >>= 1;
+    }
+
+    for (int i = 0; i < fftSize; ++i) {
+        int j = 0;
+        int temp = i;
+        for (int b = 0; b < bits; ++b) {
+            j = (j << 1) | (temp & 1);
+            temp >>= 1;
+        }
+        if (j > i) {
+            qSwap(real[i], real[j]);
+            qSwap(imag[i], imag[j]);
+        }
+    }
+
+    // Cooley-Tukey FFT（迭代实现）
+    for (int len = 2; len <= fftSize; len <<= 1) {
+        double angle = -2.0 * M_PI / len;
+        double wlenReal = qCos(angle);
+        double wlenImag = qSin(angle);
+
+        for (int i = 0; i < fftSize; i += len) {
+            double wReal = 1.0;
+            double wImag = 0.0;
+
+            for (int j = 0; j < len / 2; ++j) {
+                int idx1 = i + j;
+                int idx2 = i + j + len / 2;
+
+                double tReal = wReal * real[idx2] - wImag * imag[idx2];
+                double tImag = wReal * imag[idx2] + wImag * real[idx2];
+
+                real[idx2] = real[idx1] - tReal;
+                imag[idx2] = imag[idx1] - tImag;
+                real[idx1] = real[idx1] + tReal;
+                imag[idx1] = imag[idx1] + tImag;
+
+                double wTempReal = wReal * wlenReal - wImag * wlenImag;
+                wImag = wReal * wlenImag + wImag * wlenReal;
+                wReal = wTempReal;
+            }
+        }
+    }
+
+    // 计算幅度谱
+    QVector<double> magnitude(fftSize / 2);
+    for (int i = 0; i < fftSize / 2; ++i) {
+        magnitude[i] = qSqrt(real[i] * real[i] + imag[i] * imag[i]);
+    }
+
+    return magnitude;
 }
 
 QVector<int> AlgorithmProcessor::detectPeaks(const QVector<double> &data, double threshold)

@@ -13,7 +13,8 @@ public:
     {
         Uart,
         Tcp,
-        ModBus
+        ModBus,
+        Udp
     };
 
 private:

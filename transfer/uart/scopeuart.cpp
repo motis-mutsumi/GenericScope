@@ -131,17 +131,19 @@ ScopeTransferStatus ScopeUart::open()
     if(info_data.async)
     {
         ZeroMemory(&m_ovWrite, sizeof(m_ovWrite));
-        if (m_ovWrite.hEvent != NULL)
+        m_ovWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (m_ovWrite.hEvent == NULL)
         {
-            ResetEvent(m_ovWrite.hEvent);
-            m_ovWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+            goto err;
         }
 
         ZeroMemory(&m_ovRead, sizeof(m_ovRead));
-        if (m_ovRead.hEvent != NULL)
+        m_ovRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (m_ovRead.hEvent == NULL)
         {
-            ResetEvent(m_ovRead.hEvent);
-            m_ovRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+            CloseHandle(m_ovWrite.hEvent);
+            m_ovWrite.hEvent = NULL;
+            goto err;
         }
 
         m_hthread = (HANDLE)_beginthreadex(NULL, 0, &comRecv, this, 0, NULL);

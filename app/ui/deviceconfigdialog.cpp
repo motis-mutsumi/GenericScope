@@ -1,6 +1,7 @@
 #include "deviceconfigdialog.h"
 #include "ui_deviceconfigdialog.h"
 #include "device/devicemanager.h"
+#include "config/config.h"
 #include "common_component/log/logmanager.h"
 #include <QMessageBox>
 
@@ -201,8 +202,11 @@ void DeviceConfigDialog::loadDeviceInfo()
 
 void DeviceConfigDialog::updateConnectionStatus(bool connected)
 {
+    Config *cfg = Config::instance();
+    QString typeStr = (cfg->device.type.toUpper() == "UDP") ? "UDP" : "串口";
+
     if (connected) {
-        ui->connectionStatusLabel->setText("串口已连接");
+        ui->connectionStatusLabel->setText(typeStr + " 已连接");
         ui->connectionStatusLabel->setStyleSheet(
             "QLabel { "
             "   color: #27AE60; "
@@ -212,7 +216,7 @@ void DeviceConfigDialog::updateConnectionStatus(bool connected)
             "}"
         );
     } else {
-        ui->connectionStatusLabel->setText("串口未连接");
+        ui->connectionStatusLabel->setText(typeStr + " 未连接");
         ui->connectionStatusLabel->setStyleSheet(
             "QLabel { "
             "   color: #E74C3C; "

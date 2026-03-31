@@ -1,4 +1,4 @@
-QT += serialport serialbus core
+QT += serialport serialbus network core
 
 TEMPLATE = lib
 CONFIG += staticlib
@@ -33,6 +33,7 @@ include(../global.pri)
 include(uart/uart.pri)
 include(tcp/tcp.pri)
 include(modbus/modbus.pri)
+include(udp/udp.pri)
 
 INCLUDEPATH += $$PWD/../util
 INCLUDEPATH += $$PWD/../libs/spdlog

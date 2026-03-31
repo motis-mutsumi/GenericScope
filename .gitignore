@@ -1,0 +1,20 @@
+# 编译输出
+Bin/x64/Release/*.exe
+Bin/x64/Release/*.dll
+Bin/x64/Release/*.lib
+
+# 编译中间文件
+temp/
+
+# 运行日志
+Bin/x64/Release/logs/
+
+# Qt构建文件
+*.user
+Makefile
+Makefile.*
+*.pro.user*
+
+# 测试输出
+Bin/test/
+temp/test_*/

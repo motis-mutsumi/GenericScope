@@ -88,6 +88,11 @@ void MainWindow::setupUI()
     ui->portComboBox->setCurrentText("COM7");
     ui->baudRateComboBox->setCurrentText("115200");
 
+    // 初始化传输类型：默认串口，隐藏 UDP 控件
+    ui->udpRemoteIpEdit->setVisible(false);
+    ui->udpRemotePortSpinBox->setVisible(false);
+    ui->udpLocalPortSpinBox->setVisible(false);
+
     // 初始化姿态显示
     updateAttitudeDisplay(0, 0, 0);
 
@@ -385,28 +390,49 @@ void MainWindow::refreshAvailablePorts()
 void MainWindow::on_connectToggleButton_toggled(bool checked)
 {
     if (checked) {
-        // 连接设备
-        QString port = ui->portComboBox->currentText();
-        int baudRate = ui->baudRateComboBox->currentText().toInt();
+        Config *cfg = Config::instance();
+        const bool isUdp = (ui->transferTypeComboBox->currentIndex() == 1);
 
-        // 配置设备
-        Config::instance()->device.port = port;
-        Config::instance()->device.baudRate = baudRate;
+        if (isUdp) {
+            cfg->device.type = "UDP";
+            cfg->device.udpRemoteIp = ui->udpRemoteIpEdit->text();
+            cfg->device.udpRemotePort = ui->udpRemotePortSpinBox->value();
+            cfg->device.udpLocalPort  = ui->udpLocalPortSpinBox->value();
+        } else {
+            cfg->device.type = "UART";
+            cfg->device.port = ui->portComboBox->currentText();
+            cfg->device.baudRate = ui->baudRateComboBox->currentText().toInt();
+        }
 
         if (m_deviceManager->connectDevice()) {
             ui->connectToggleButton->setText("Disconnect");
+            ui->transferTypeComboBox->setEnabled(false);
             ui->portComboBox->setEnabled(false);
             ui->baudRateComboBox->setEnabled(false);
-            LOG_INFO(QString("Connected to %1 @ %2 baud").arg(port).arg(baudRate));
+            ui->udpRemoteIpEdit->setEnabled(false);
+            ui->udpRemotePortSpinBox->setEnabled(false);
+            ui->udpLocalPortSpinBox->setEnabled(false);
 
-            // 启动数据定时器
+            if (isUdp) {
+                LOG_INFO(QString("UDP connected: local=%1, remote=%2:%3")
+                             .arg(cfg->device.udpLocalPort)
+                             .arg(cfg->device.udpRemoteIp)
+                             .arg(cfg->device.udpRemotePort));
+            } else {
+                LOG_INFO(QString("Connected to %1 @ %2 baud")
+                             .arg(cfg->device.port)
+                             .arg(cfg->device.baudRate));
+            }
+
             m_deviceManager->startPolling();
             m_dataTimer->start(kDataTimerInterval);
-
             m_startTime = QDateTime::currentMSecsSinceEpoch();
         } else {
             ui->connectToggleButton->setChecked(false);
-            QString errorMsg = QString("Failed to connect to %1 at %2 baud").arg(port).arg(baudRate);
+            QString errorMsg = isUdp
+                ? QString("Failed to open UDP local port: %1").arg(cfg->device.udpLocalPort)
+                : QString("Failed to connect to %1 at %2 baud")
+                      .arg(cfg->device.port).arg(cfg->device.baudRate);
             LOG_ERROR(errorMsg);
             QMessageBox::critical(this, "Connection Error", errorMsg);
         }
@@ -417,8 +443,9 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
         m_dataTimer->stop();
 
         ui->connectToggleButton->setText("Connect");
-        ui->portComboBox->setEnabled(true);
-        ui->baudRateComboBox->setEnabled(true);
+        ui->transferTypeComboBox->setEnabled(true);
+        // 根据当前类型恢复对应控件
+        on_transferTypeComboBox_currentIndexChanged(ui->transferTypeComboBox->currentIndex());
 
         LOG_INFO("Device disconnected");
     }
@@ -432,6 +459,18 @@ void MainWindow::on_portComboBox_currentTextChanged(const QString &text)
 void MainWindow::on_baudRateComboBox_currentTextChanged(const QString &text)
 {
     LOG_DEBUG(QString("Baud rate changed to: %1").arg(text));
+}
+
+void MainWindow::on_transferTypeComboBox_currentIndexChanged(int index)
+{
+    const bool isUdp = (index == 1);
+    // 串口控件
+    ui->portComboBox->setVisible(!isUdp);
+    ui->baudRateComboBox->setVisible(!isUdp);
+    // UDP 控件
+    ui->udpRemoteIpEdit->setVisible(isUdp);
+    ui->udpRemotePortSpinBox->setVisible(isUdp);
+    ui->udpLocalPortSpinBox->setVisible(isUdp);
 }
 
 void MainWindow::on_recordLogCheckBox_toggled(bool checked)

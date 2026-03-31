@@ -3,6 +3,7 @@
 #include "tcp/scopetcp.h"
 #include "uart/scopeuart.h"
 #include "modbus/scopemodbus.h"
+#include "udp/scopeudp.h"
 #include <mutex>
 #include <memory>
 #include <unordered_map>
@@ -27,6 +28,9 @@ void ScopeTransferManager::createTransfer(TransferType type, PPScopeTransferBasi
         break;
     case TransferType::ModBus:
         *pp_transfer = new ScopeModBus();
+        break;
+    case TransferType::Udp:
+        *pp_transfer = new ScopeUdp();
         break;
     default:
         return; // 无效类型

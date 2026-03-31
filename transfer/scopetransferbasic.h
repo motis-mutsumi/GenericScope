@@ -18,10 +18,10 @@ public:
     //Destructor
     virtual ~ScopeTransferBasic();
     bool isOpen() const { return m_open; }
-
-protected:
     virtual ScopeTransferStatus open() = 0;
     virtual ScopeTransferStatus close() = 0;
+
+protected:
 
 
 protected:
