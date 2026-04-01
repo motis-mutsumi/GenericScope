@@ -1,4 +1,4 @@
-#ifndef COMMANDSETTINGSDIALOG_H
+﻿#ifndef COMMANDSETTINGSDIALOG_H
 #define COMMANDSETTINGSDIALOG_H
 
 #include <QDialog>
@@ -38,7 +38,7 @@ namespace ProtocolTypes {
  * - JSON导入导出
  * - 协议生成与测试
  *
- * 参考：docs/protocol-config-system-spec.md
+ * 参考：docs/markdown_all/protocol-config-system-spec.md
  */
 class CommandSettingsDialog : public QDialog
 {

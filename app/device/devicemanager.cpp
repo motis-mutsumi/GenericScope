@@ -27,9 +27,14 @@ bool DeviceManager::connectDevice()
 
     if (type == "UDP") {
         return connectUdp();
-    } else {
+    }
+    if (type == "UART") {
         return connectUart();
     }
+
+    LOG_ERROR(QString("Unsupported device type: %1").arg(cfg->device.type));
+    emit errorOccurred(QString("Unsupported device type: %1").arg(cfg->device.type));
+    return false;
 }
 
 bool DeviceManager::connectUart()
@@ -90,7 +95,7 @@ bool DeviceManager::connectUdp()
 {
     Config *cfg = Config::instance();
 
-    ScopeUdp *udp = new ScopeUdp(this);
+    ScopeUdp *udp = new ScopeUdp();
 
     UdpInfo info;
     info.remoteIp   = cfg->device.udpRemoteIp.toStdString();
@@ -131,14 +136,7 @@ void DeviceManager::disconnectDevice()
     }
 
     m_transfer->close();
-
-    // ScopeUdp 是 QObject 子对象（parent=this），deleteLater 已处理；
-    // ScopeUart 不是 QObject，直接 delete
-    ScopeUart *uart = dynamic_cast<ScopeUart *>(m_transfer);
-    if (uart) {
-        delete m_transfer;
-    }
-    // ScopeUdp 由 Qt 父子关系管理，不手动 delete
+    delete m_transfer;
 
     m_transfer = nullptr;
     m_controlTransfer = nullptr;

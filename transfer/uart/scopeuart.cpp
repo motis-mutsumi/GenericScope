@@ -173,6 +173,19 @@ ScopeTransferStatus ScopeUart::close()
     if (m_open)
     {
         m_open = false;
+
+        if (m_hcom != INVALID_HANDLE_VALUE)
+        {
+            PurgeComm(m_hcom, PURGE_TXCLEAR | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_RXABORT);
+        }
+
+        if (NULL != m_hthread)
+        {
+            WaitForSingleObject(m_hthread, 3000);//等待线程结束
+            CloseHandle(m_hthread);
+            m_hthread = NULL;
+        }
+
         if (NULL != m_ovWrite.hEvent)
         {
             CloseHandle(m_ovWrite.hEvent);
@@ -184,15 +197,11 @@ ScopeTransferStatus ScopeUart::close()
             m_ovRead.hEvent = NULL;
         }
 
-        if (NULL != m_hthread)
+        if (m_hcom != INVALID_HANDLE_VALUE)
         {
-            WaitForSingleObject(m_hthread, 3000);//等待线程结束
-            CloseHandle(m_hthread);
-            m_hthread = NULL;
+            CloseHandle(m_hcom);
+            m_hcom = INVALID_HANDLE_VALUE;
         }
-
-        CloseHandle(m_hcom);
-        m_hcom = INVALID_HANDLE_VALUE;
     }
 
     return Ok;
@@ -227,6 +236,11 @@ ScopeTransferStatus ScopeUart::readData(uint8_t *rx_data, uint32_t read_len, uin
 
 ScopeTransferStatus ScopeUart::writeData(uint8_t *data, uint32_t write_len)
 {
+    if (!m_open || m_hcom == INVALID_HANDLE_VALUE || data == nullptr || write_len == 0)
+    {
+        return Error;
+    }
+
     DWORD dw_send = 0;
     PurgeComm(m_hcom, PURGE_TXCLEAR | PURGE_TXABORT);
 
@@ -257,6 +271,16 @@ ScopeTransferStatus ScopeUart::writeData(uint8_t *data, uint32_t write_len)
                     }
                 }
             }
+            else
+            {
+                ClearCommError(m_hcom, &dw_error, NULL);
+                return Error;
+            }
+        }
+
+        if (dw_send != write_len)
+        {
+            return Error;
         }
     }
     else
@@ -374,7 +398,7 @@ unsigned int __stdcall comRecv(void* param)
                     if(!obj->m_open)
                     {
                         success_ = false;
-                        delete[] p_read_buf;
+                        free(p_read_buf);
                         return 0;
                     }
 
@@ -402,7 +426,7 @@ unsigned int __stdcall comRecv(void* param)
         if(!obj->m_open)
         {
             success_ = false;
-            delete[] p_read_buf;
+            free(p_read_buf);
             return 0;
         }
 

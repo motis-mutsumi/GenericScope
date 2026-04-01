@@ -24,7 +24,8 @@ private:
 public:
     // get transfer by type
     static void createTransfer(TransferType type, PPScopeTransferBasic);
-    static void destoryTransfer(PScopeTransferBasic);
+    static void destroyTransfer(PScopeTransferBasic);
+    static void destoryTransfer(PScopeTransferBasic p_transfer) { destroyTransfer(p_transfer); }
 
 private:
 };

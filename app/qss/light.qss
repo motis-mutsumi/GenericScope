@@ -24,7 +24,7 @@ QMainWindow {
     background-color: #FAFAFA;
 }
 
-QMainWindow::centralwidget {
+QWidget#centralwidget {
     background-color: #FAFAFA;
 }
 
@@ -51,6 +51,16 @@ QWidget#titleBarWidget QLabel {
 QWidget#titleBarWidget QLabel#titleLabel {
     font-size: 11pt;
     font-weight: 700;
+}
+
+QWidget#titleBarWidget QToolButton#darkModeButton {
+    font-size: 14pt;
+    font-weight: 600;
+}
+
+QWidget#titleBarWidget QToolButton#darkModeButton:checked {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.35);
 }
 
 /* ========== 控制栏 ========== */

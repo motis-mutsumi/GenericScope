@@ -38,7 +38,7 @@ void ScopeTransferManager::createTransfer(TransferType type, PPScopeTransferBasi
     return;
 }
 
-void ScopeTransferManager::destoryTransfer(PScopeTransferBasic p_transfer)
+void ScopeTransferManager::destroyTransfer(PScopeTransferBasic p_transfer)
 {
     if (!p_transfer)
     {

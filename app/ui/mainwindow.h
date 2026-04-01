@@ -5,8 +5,8 @@
 #include <QTimer>
 #include <QTableWidgetItem>
 #include <QMenu>
+#include <QScopedPointer>
 #include "device/devicemanager.h"
-#include "common_component/plot/lineplot.h"
 #include "common_component/plot/monitorpanel.h"
 #include "common_component/log/logwidget.h"
 #include "common_component/record/datarecorder.h"
@@ -69,7 +69,7 @@ private:
     void setupConnections();
     void setupMenu();
     void loadPlugins();
-    void preloadProtocols();  // 预加载协议配置（修复bug）
+    void preloadProtocols();
     void loadStyleSheet(bool darkMode = false);
     void updateConnectionStatus(bool connected);
     void processData(const QByteArray &data);
@@ -84,6 +84,7 @@ private:
     void setupChart();
     void setupLogWidget();
     void refreshAvailablePorts();
+    void updateThemeToggleButton(bool darkMode);
     QString generateBuiltInStyle(bool darkMode);
     QString getFieldUnit(const QString &fieldName);  // 从协议获取字段单位
 
@@ -94,7 +95,6 @@ private:
     DeviceManager *m_deviceManager;
 
     // 绘图组件
-    LinePlot *m_linePlot;
     MonitorPanel *m_monitorPanel;  // 监控面板
     IMU3DView *m_3dView;        // 3D可视化组件
     class HistogramPlot *m_histogramPlot;  // 直方图组件（前向声明）
@@ -104,7 +104,7 @@ private:
     DataRecorder *m_dataRecorder;
 
     // 协议解析
-    class ProtocolParser *m_protocolParser;  // 协议解析器（动态）
+    QScopedPointer<class ProtocolParser> m_protocolParser;
 
     // 定时器
     QTimer *m_updateTimer;      // UI 更新定时器
@@ -129,6 +129,8 @@ private:
     int m_errorCount;
     qint64 m_lastDataRateTime;      // 上次计算数据速率的时间
     int m_lastPacketCount;          // 上次的数据包计数
+    qint64 m_lastErrorDialogTime;
+    QString m_lastErrorMessage;
 
     // 配置
     bool m_isDarkMode;
@@ -144,6 +146,7 @@ private:
     static constexpr int kDataTableMessageColumn = 0;    // 数据表格消息列
     static constexpr int kDataTableValueColumn = 1;      // 数据表格值列
     static constexpr int kDataTableUnitColumn = 2;       // 数据表格单位列
+    static constexpr int kErrorDialogThrottleMs = 3000;
 };
 
 #endif // MAINWINDOW_H

@@ -16,17 +16,18 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QDir>
+#include <QSettings>
+#include <QSignalBlocker>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_deviceManager(new DeviceManager(this))
-    , m_linePlot(nullptr)
     , m_monitorPanel(nullptr)
     , m_3dView(nullptr)
+    , m_histogramPlot(nullptr)
     , m_logWidget(nullptr)
     , m_dataRecorder(new DataRecorder(this))
-    , m_protocolParser(nullptr)
     , m_updateTimer(new QTimer(this))
     , m_dataTimer(new QTimer(this))
     , m_timeDisplayTimer(new QTimer(this))
@@ -41,6 +42,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_errorCount(0)
     , m_lastDataRateTime(0)
     , m_lastPacketCount(0)
+    , m_lastErrorDialogTime(0)
     , m_isDarkMode(false)
 {
     ui->setupUi(this);
@@ -48,7 +50,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
     setupMenu();
     loadPlugins();
-    loadStyleSheet(m_isDarkMode);
+    const bool savedDarkMode = QSettings("GenericScope", "UI").value("theme/darkMode", false).toBool();
+    {
+        const QSignalBlocker blocker(ui->darkModeButton);
+        ui->darkModeButton->setChecked(savedDarkMode);
+    }
+    loadStyleSheet(savedDarkMode);
 
     // 预加载协议配置（修复：即使不打开协议配置对话框，也能添加图表）
     preloadProtocols();
@@ -179,14 +186,13 @@ void MainWindow::loadPlugins()
 
 void MainWindow::preloadProtocols()
 {
-    // 预加载协议：创建临时的CommandSettingsDialog来触发协议加载
-    // 这样即使用户不打开协议配置对话框，也能直接添加图表
-    CommandSettingsDialog tempDialog(this);
-    // 不需要显示对话框，构造函数已经调用了loadProtocols()和syncToProtocolManager()
-
-    // 记录加载结果
     ProtocolManager *manager = ProtocolManager::instance();
-    int protocolCount = manager->getProtocolNames().size();
+    if (!manager) {
+        LOG_WARNING("ProtocolManager not available when preloading protocols");
+        return;
+    }
+
+    const int protocolCount = manager->loadProtocolsFromSettings("GenericScope", "ProtocolConfig");
     if (protocolCount > 0) {
         qDebug() << QString("[MainWindow] 预加载了 %1 个协议配置").arg(protocolCount);
     } else {
@@ -201,6 +207,7 @@ void MainWindow::loadStyleSheet(bool darkMode)
 
     if (file.open(QFile::ReadOnly | QFile::Text)) {
         QTextStream stream(&file);
+        stream.setCodec("UTF-8");
         QString styleSheet = stream.readAll();
         qApp->setStyleSheet(styleSheet);
         file.close();
@@ -208,9 +215,36 @@ void MainWindow::loadStyleSheet(bool darkMode)
         // 如果无法加载QSS文件，使用内置样式
         QString builtInStyle = generateBuiltInStyle(darkMode);
         qApp->setStyleSheet(builtInStyle);
+        LOG_WARNING(QString("Failed to load %1, fallback to built-in style").arg(qssFile));
     }
 
     m_isDarkMode = darkMode;
+    updateThemeToggleButton(darkMode);
+
+    if (m_logWidget) {
+        m_logWidget->setTheme(darkMode);
+    }
+
+    if (m_3dView) {
+        m_3dView->setBackgroundColor(darkMode
+            ? QColor(0x1E, 0x1E, 0x1E)
+            : QColor(0xF5, 0xF5, 0xF5));
+    }
+
+    if (m_monitorPanel) {
+        m_monitorPanel->update();
+    }
+}
+
+void MainWindow::updateThemeToggleButton(bool darkMode)
+{
+    if (!ui || !ui->darkModeButton) {
+        return;
+    }
+
+    ui->darkModeButton->setText(darkMode ? QStringLiteral("L") : QStringLiteral("D"));
+    ui->darkModeButton->setToolTip(darkMode ? QStringLiteral("Switch to light mode")
+                                            : QStringLiteral("Switch to dark mode"));
 }
 
 void MainWindow::setupDataTable()
@@ -344,9 +378,6 @@ void MainWindow::setupChart()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(5);
     layout->addWidget(m_monitorPanel);
-
-    // 旧的LinePlot已被MonitorPanel替换
-    m_linePlot = nullptr;
 }
 
 void MainWindow::setupLogWidget()
@@ -427,6 +458,12 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
             m_deviceManager->startPolling();
             m_dataTimer->start(kDataTimerInterval);
             m_startTime = QDateTime::currentMSecsSinceEpoch();
+            m_packetCount = 0;
+            m_errorCount = 0;
+            m_lastPacketCount = 0;
+            m_lastDataRateTime = 0;
+            m_lastErrorDialogTime = 0;
+            m_lastErrorMessage.clear();
         } else {
             ui->connectToggleButton->setChecked(false);
             QString errorMsg = isUdp
@@ -441,6 +478,13 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
         m_deviceManager->stopPolling();
         m_deviceManager->disconnectDevice();
         m_dataTimer->stop();
+        m_startTime = 0;
+        m_packetCount = 0;
+        m_errorCount = 0;
+        m_lastPacketCount = 0;
+        m_lastDataRateTime = 0;
+        m_lastErrorDialogTime = 0;
+        m_lastErrorMessage.clear();
 
         ui->connectToggleButton->setText("Connect");
         ui->transferTypeComboBox->setEnabled(true);
@@ -524,27 +568,7 @@ void MainWindow::on_settingsButton_clicked()
 void MainWindow::on_darkModeButton_toggled(bool checked)
 {
     loadStyleSheet(checked);
-
-    // 更新日志窗口主题
-    if (m_logWidget) {
-        m_logWidget->setTheme(checked);
-    }
-
-    // 更新3D视图背景色
-    if (m_3dView) {
-        QPalette pal = QApplication::palette();
-        QColor bgColor = pal.color(QPalette::Window);
-        if (bgColor.lightness() < 128) {
-            m_3dView->setBackgroundColor(QColor(0x1E, 0x1E, 0x1E)); // 深色主题
-        } else {
-            m_3dView->setBackgroundColor(QColor(0xF5, 0xF5, 0xF5)); // 浅色主题
-        }
-    }
-
-    // 强制刷新所有图表组件以应用新颜色
-    if (m_linePlot) {
-        m_linePlot->update();
-    }
+    QSettings("GenericScope", "UI").setValue("theme/darkMode", checked);
 
     LOG_INFO(QString("Dark mode: %1").arg(checked ? "ON" : "OFF"));
 }
@@ -575,22 +599,15 @@ void MainWindow::onProtocolChanged(const QString &name)
     // 重建数据表格以反映新的协议字段
     rebuildDataTableFromProtocol();
 
-    // ========== 新增：重建协议解析器 ==========
-    // 删除旧解析器
-    if (m_protocolParser) {
-        delete m_protocolParser;
-        m_protocolParser = nullptr;
-    }
-
-    // 创建新解析器
+    // 重建协议解析器
     if (ProtocolManager::instance() && ProtocolManager::instance()->hasProtocol(name)) {
         ProtocolConfig config = ProtocolManager::instance()->getProtocol(name);
-        m_protocolParser = new ProtocolParser(config);
+        m_protocolParser.reset(new ProtocolParser(config));
         LOG_INFO(QString("Protocol parser created for: %1").arg(name));
     } else {
+        m_protocolParser.reset();
         LOG_WARNING(QString("Protocol %1 not found, parser not created").arg(name));
     }
-    // ==========================================
 
     statusBar()->showMessage(QString("已切换到协议: %1").arg(name), 3000);
 
@@ -632,14 +649,20 @@ void MainWindow::onDeviceError(const QString &error)
     updateIMUStatus("Error", 0, error);
     LOG_ERROR(QString("Device error: %1").arg(error));
 
-    QMessageBox::warning(this, "Device Error", error);
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const bool isRepeated = (error == m_lastErrorMessage);
+    const bool shouldShowDialog = !isRepeated || (now - m_lastErrorDialogTime >= kErrorDialogThrottleMs);
+    if (shouldShowDialog) {
+        QMessageBox::warning(this, "Device Error", error);
+        m_lastErrorDialogTime = now;
+        m_lastErrorMessage = error;
+    }
 }
 
 void MainWindow::onUpdateTimer()
 {
-    // 更新UI（较低频率）
-    if (m_linePlot) {
-        m_linePlot->refresh();
+    if (m_monitorPanel) {
+        m_monitorPanel->update();
     }
 }
 
@@ -679,7 +702,7 @@ void MainWindow::processData(const QByteArray &data)
         QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
         if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
             ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
-            m_protocolParser = new ProtocolParser(config);
+            m_protocolParser.reset(new ProtocolParser(config));
             LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
         } else {
             // 回退到硬编码解析（兼容性）

@@ -3,6 +3,9 @@
 #include <QFileInfo>
 #include <QMutexLocker>
 #include <QDebug>
+#include <QSettings>
+#include <QJsonDocument>
+#include <QSet>
 
 ProtocolManager* ProtocolManager::instance()
 {
@@ -57,6 +60,53 @@ int ProtocolManager::loadProtocols(const QString &dirPath)
 
     qDebug() << "Loaded" << count << "protocols from" << dirPath;
     return count;
+}
+
+int ProtocolManager::loadProtocolsFromSettings(const QString &organization, const QString &application)
+{
+    QSettings settings(organization, application);
+    const int count = settings.beginReadArray("protocols");
+
+    int addedCount = 0;
+    int updatedCount = 0;
+    int invalidCount = 0;
+    QSet<QString> uniqueLoadedNames;
+    {
+        QMutexLocker locker(&m_mutex);
+        for (int i = 0; i < count; ++i) {
+            settings.setArrayIndex(i);
+            const QString jsonStr = settings.value("config").toString();
+            QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8());
+            if (doc.isNull() || !doc.isObject()) {
+                invalidCount++;
+                continue;
+            }
+
+            ProtocolConfig config = ProtocolConfig::fromJson(doc.object());
+            if (config.name.isEmpty()) {
+                invalidCount++;
+                continue;
+            }
+
+            const bool existed = m_protocols.contains(config.name);
+            m_protocols[config.name] = config;
+            if (existed) {
+                updatedCount++;
+            } else {
+                addedCount++;
+            }
+            uniqueLoadedNames.insert(config.name);
+            emit protocolAdded(config.name);
+        }
+    }
+
+    settings.endArray();
+    const int uniqueLoadedCount = uniqueLoadedNames.size();
+    qDebug() << "Loaded protocols from QSettings. unique:" << uniqueLoadedCount
+             << "added:" << addedCount
+             << "updated:" << updatedCount
+             << "invalid:" << invalidCount;
+    return uniqueLoadedCount;
 }
 
 bool ProtocolManager::saveProtocol(const QString &name, const QString &filePath)

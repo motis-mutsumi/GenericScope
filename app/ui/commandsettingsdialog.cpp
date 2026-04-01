@@ -1,4 +1,4 @@
-#include "commandsettingsdialog.h"
+﻿#include "commandsettingsdialog.h"
 #include "ui_commandsettingsdialog.h"
 #include "protocoltypeconverter.h"
 #include "protocoltestdialog.h"
@@ -1107,6 +1107,16 @@ void CommandSettingsDialog::syncToProtocolManager()
 {
     // 将UI层的所有协议配置同步到ProtocolManager
     ProtocolManager *manager = ProtocolManager::instance();
+    const QStringList existingNames = manager->getProtocolNames();
+    const QStringList targetNames = m_protocols.keys();
+
+    int removedCount = 0;
+    for (const QString &existingName : existingNames) {
+        if (!m_protocols.contains(existingName)) {
+            manager->removeProtocol(existingName);
+            removedCount++;
+        }
+    }
 
     for (auto it = m_protocols.begin(); it != m_protocols.end(); ++it) {
         const QString &name = it.key();
@@ -1119,12 +1129,17 @@ void CommandSettingsDialog::syncToProtocolManager()
         manager->addProtocol(protocolConfig);
     }
 
-    // 设置当前协议
-    if (!m_currentProtocolName.isEmpty()) {
+    // 设置当前协议（如果当前协议已被删除，回退到第一个可用协议）
+    if (!m_currentProtocolName.isEmpty() && manager->hasProtocol(m_currentProtocolName)) {
         manager->setCurrentProtocol(m_currentProtocolName);
+    } else if (!targetNames.isEmpty()) {
+        m_currentProtocolName = targetNames.first();
+        manager->setCurrentProtocol(m_currentProtocolName);
+    } else {
+        m_currentProtocolName.clear();
     }
 
-    qDebug() << "已同步" << m_protocols.size() << "个协议到ProtocolManager";
+    qDebug() << "已同步" << m_protocols.size() << "个协议到ProtocolManager，移除" << removedCount << "个过期协议";
 }
 
 void CommandSettingsDialog::syncFromProtocolManager()
@@ -1445,7 +1460,7 @@ void CommandSettingsDialog::showHelp()
         "　　实际温度 = (原始值 × 0.49) - 40</p>"
 
         "<hr/>"
-        "<p><b>详细文档：</b>docs/protocol-config-system-spec.md</p>";
+        "<p><b>详细文档：</b>docs/markdown_all/protocol-config-system-spec.md</p>";
 
     QMessageBox helpBox(this);
     helpBox.setWindowTitle("协议配置帮助");

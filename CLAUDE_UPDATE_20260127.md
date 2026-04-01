@@ -1,4 +1,4 @@
-
+﻿
 
 ---
 
@@ -21,7 +21,7 @@
 - `app/ui/protocoltestdialog.cpp` - 协议测试对话框实现
 - `docs/field_import_example.csv` - CSV导入示例文件
 - `docs/field_import_example.json` - JSON导入示例文件
-- `docs/protocol-config-new-features-guide.md` - 新功能使用指南
+- `docs/markdown_all/protocol-config-new-features-guide.md` - 新功能使用指南
 
 **修改文件**:
 - `app/ui/commandsettingsdialog.h` - 添加字段导入辅助函数声明
@@ -191,7 +191,7 @@ Pitch,float,4,4,1.0,0.0,°,90.0,-90.0,俯仰角,Pitch angle
 #### 文档更新
 
 **新增文档**:
-1. `docs/protocol-config-new-features-guide.md` - 新功能使用指南
+1. `docs/markdown_all/protocol-config-new-features-guide.md` - 新功能使用指南
    - 字段导入功能说明
    - 协议测试功能说明
    - 使用步骤和示例
@@ -239,7 +239,7 @@ Pitch,float,4,4,1.0,0.0,°,90.0,-90.0,俯仰角,Pitch angle
 **功能完成度**: 约95%（核心功能完成，需要后续完善）
 
 **参考文档**:
-- 使用指南：`docs/protocol-config-new-features-guide.md`
+- 使用指南：`docs/markdown_all/protocol-config-new-features-guide.md`
 - CSV示例：`docs/field_import_example.csv`
 - JSON示例：`docs/field_import_example.json`
 - 协议配置：`app/ui/commandsettingsdialog.h/cpp`

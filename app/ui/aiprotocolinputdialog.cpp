@@ -1,4 +1,4 @@
-#include "aiprotocolinputdialog.h"
+﻿#include "aiprotocolinputdialog.h"
 #include "ui_aiprotocolinputdialog.h"
 #include "protocolaigenerator.h"
 #include "protocolcligenerator.h"
@@ -259,7 +259,7 @@ void AIProtocolInputDialog::onMethodChanged()
     } else {
         ui->methodHintLabel->setText(
             "💡 CLI方式：需要安装claude命令并登录，适合个人开发和测试。\n"
-            "安装方法：详见文档 docs/ai-protocol-cli-guide.md");
+            "安装方法：详见文档 docs/markdown_all/ai-protocol-cli-guide.md");
     }
 }
 

@@ -40,6 +40,7 @@ public:
      * @return 成功加载的协议数量
      */
     int loadProtocols(const QString &dirPath);
+    int loadProtocolsFromSettings(const QString &organization, const QString &application);
 
     /**
      * @brief 保存协议

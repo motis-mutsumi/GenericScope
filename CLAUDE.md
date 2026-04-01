@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 GenericScope 通用上位机框架 - Qt 5.14 / C++17 / MSVC / spdlog，约95%完成。
 
@@ -48,6 +48,6 @@ LogManager::instance()->error("err: {}", msg);
 
 ## 文档
 
-- 用户手册：`docs/user-manual.md`
-- 协议规范：`docs/protocol-config-system-spec.md`
+- 用户手册：`docs/markdown_all/user-manual.md`
+- 协议规范：`docs/markdown_all/protocol-config-system-spec.md`
 - 任务文档：`docs/tasks/`
