@@ -177,7 +177,7 @@ QString ProtocolCLIGenerator::buildPrompt(const QString &protocolName,
   "frameHeader": "帧头16进制（如 AA 55）",
   "frameFooter": "帧尾16进制（如 0D 0A，无帧尾则为空字符串）",
   "lengthPosition": 长度字段位置（-1表示无长度字段）,
-  "checksumType": "校验类型：None/Sum/XOR/CRC8/CRC16_MODBUS/CRC16_CCITT/CRC32",
+  "checksumType": "校验类型：None/Sum/XOR/CRC8/CRC16/CRC32",
   "checksumScope": "校验范围：FullFrame/AfterHeader/DataOnly/Custom",
   "checksumStart": 校验起始位置,
   "checksumLength": 校验字节数（-1表示到帧尾）,
@@ -290,8 +290,7 @@ bool ProtocolCLIGenerator::parseAIResponse(const QString &response,
     else if (checksumTypeStr == "Sum") config.checksumType = CommandSettingsDialog::ChecksumType::Sum;
     else if (checksumTypeStr == "XOR") config.checksumType = CommandSettingsDialog::ChecksumType::XOR;
     else if (checksumTypeStr == "CRC8") config.checksumType = CommandSettingsDialog::ChecksumType::CRC8;
-    else if (checksumTypeStr == "CRC16_MODBUS") config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_MODBUS;
-    else if (checksumTypeStr == "CRC16_CCITT") config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_CCITT;
+    else if (checksumTypeStr == "CRC16" || checksumTypeStr == "CRC16_XMODEM") config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_XMODEM;
     else if (checksumTypeStr == "CRC32") config.checksumType = CommandSettingsDialog::ChecksumType::CRC32;
 
     // 解析校验范围

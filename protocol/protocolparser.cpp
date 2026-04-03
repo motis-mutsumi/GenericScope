@@ -34,9 +34,34 @@ ParseResult ProtocolParser::parse(const QByteArray &data)
     }
 
     // 3. 验证校验码
+    // 兼容部分协议的长度字段语义：长度不含末尾校验码（常见于二进制IMU协议）
     if (!verifyChecksum(frame)) {
-        result.errorMsg = "Checksum verification failed";
-        return result;
+        bool recoveredByLengthPlusChecksum = false;
+        if (m_config.lengthPosition >= 0 && m_config.checksumType != ChecksumType::None) {
+            const int checksumSize = getChecksumSize();
+            const int recoveredLen = frame.size() + checksumSize;
+            if (headerPos + recoveredLen <= data.size()) {
+                QByteArray altFrame = data.mid(headerPos, recoveredLen);
+                if (verifyChecksum(altFrame)) {
+                    frame = altFrame;
+                    recoveredByLengthPlusChecksum = true;
+                    qDebug() << "Length-field compatibility path used: length excludes checksum, recovered with +"
+                             << checksumSize << "bytes";
+                }
+            } else {
+                // 当前缓冲区仅够“header + length”语义，但不够“header + length + checksum”语义。
+                // 这通常是串口分包导致，必须等待后续字节，不能误判为CRC错误并丢弃数据。
+                result.errorMsg = "Incomplete frame";
+                return result;
+            }
+        }
+
+        if (!recoveredByLengthPlusChecksum) {
+            // 保留本次用于校验的原始帧，便于上层日志定位CRC不匹配原因
+            result.rawData = frame;
+            result.errorMsg = "Checksum verification failed";
+            return result;
+        }
     }
 
     // 4. 解析所有字段
@@ -131,9 +156,7 @@ QByteArray ProtocolParser::extractFrame(const QByteArray &data, int headerPos) c
 
     // 检查数据是否足够
     if (frameStart + frameLength > data.size()) {
-        qDebug() << "Incomplete frame: need" << frameLength << "bytes, but only"
-                 << (data.size() - frameStart) << "bytes available";
-        return QByteArray();  // 数据不完整
+        return QByteArray();  // 数据不完整（串口分包场景常见，静默等待下一包）
     }
 
     return data.mid(frameStart, frameLength);
@@ -205,11 +228,8 @@ bool ProtocolParser::verifyChecksum(const QByteArray &frame) const
         case ChecksumType::CRC8:
             calculated = ChecksumCalculator::calculateCRC8(frame, checksumStart, checksumLength);
             break;
-        case ChecksumType::CRC16_MODBUS:
-            calculated = ChecksumCalculator::calculateCRC16_MODBUS(frame, checksumStart, checksumLength);
-            break;
-        case ChecksumType::CRC16_CCITT:
-            calculated = ChecksumCalculator::calculateCRC16_CCITT(frame, checksumStart, checksumLength);
+        case ChecksumType::CRC16_XMODEM:
+            calculated = ChecksumCalculator::calculateCRC16_XMODEM(frame, checksumStart, checksumLength);
             break;
         case ChecksumType::CRC32:
             calculated = ChecksumCalculator::calculateCRC32(frame, checksumStart, checksumLength);
@@ -236,8 +256,7 @@ bool ProtocolParser::verifyChecksum(const QByteArray &frame) const
         if (checksumPos + 4 <= frame.size()) {
             received = m_checksumConverter.convertUInt32(frame, checksumPos).toUInt();
         }
-    } else if (m_config.checksumType == ChecksumType::CRC16_MODBUS ||
-               m_config.checksumType == ChecksumType::CRC16_CCITT) {
+    } else if (m_config.checksumType == ChecksumType::CRC16_XMODEM) {
         if (checksumPos + 2 <= frame.size()) {
             received = m_checksumConverter.convertUInt16(frame, checksumPos).toUInt();
         }
@@ -279,8 +298,7 @@ int ProtocolParser::getChecksumSize() const
     switch (m_config.checksumType) {
         case ChecksumType::CRC32:
             return 4;
-        case ChecksumType::CRC16_MODBUS:
-        case ChecksumType::CRC16_CCITT:
+        case ChecksumType::CRC16_XMODEM:
             return 2;
         case ChecksumType::Sum:
         case ChecksumType::XOR:

@@ -65,8 +65,7 @@ CommandSettingsDialog::ByteOrder ProtocolTypeConverter::protocolToUiByteOrder(::
         case CommandSettingsDialog::ChecksumType::Sum:           return ::ChecksumType::Sum;
         case CommandSettingsDialog::ChecksumType::XOR:           return ::ChecksumType::XOR;
         case CommandSettingsDialog::ChecksumType::CRC8:          return ::ChecksumType::CRC8;
-        case CommandSettingsDialog::ChecksumType::CRC16_MODBUS:  return ::ChecksumType::CRC16_MODBUS;
-        case CommandSettingsDialog::ChecksumType::CRC16_CCITT:   return ::ChecksumType::CRC16_CCITT;
+        case CommandSettingsDialog::ChecksumType::CRC16_XMODEM:  return ::ChecksumType::CRC16_XMODEM;
         case CommandSettingsDialog::ChecksumType::CRC32:         return ::ChecksumType::CRC32;
         default: return ::ChecksumType::None;
     }
@@ -79,8 +78,7 @@ CommandSettingsDialog::ChecksumType ProtocolTypeConverter::protocolToUiChecksumT
         case ::ChecksumType::Sum:           return CommandSettingsDialog::ChecksumType::Sum;
         case ::ChecksumType::XOR:           return CommandSettingsDialog::ChecksumType::XOR;
         case ::ChecksumType::CRC8:          return CommandSettingsDialog::ChecksumType::CRC8;
-        case ::ChecksumType::CRC16_MODBUS:  return CommandSettingsDialog::ChecksumType::CRC16_MODBUS;
-        case ::ChecksumType::CRC16_CCITT:   return CommandSettingsDialog::ChecksumType::CRC16_CCITT;
+        case ::ChecksumType::CRC16_XMODEM:  return CommandSettingsDialog::ChecksumType::CRC16_XMODEM;
         case ::ChecksumType::CRC32:         return CommandSettingsDialog::ChecksumType::CRC32;
         default: return CommandSettingsDialog::ChecksumType::None;
     }

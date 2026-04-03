@@ -44,8 +44,7 @@ enum class ChecksumType {
     Sum,            // 累加和
     XOR,            // 异或
     CRC8,           // CRC8
-    CRC16_MODBUS,   // CRC16-MODBUS（多项式0xA001，初值0xFFFF）
-    CRC16_CCITT,    // CRC16-CCITT（多项式0x1021，初值0xFFFF）
+    CRC16_XMODEM,   // CRC16/XMODEM????0x1021???0x0000?
     CRC32           // CRC32（IEEE 802.3标准）
 };
 

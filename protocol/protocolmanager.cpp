@@ -101,6 +101,22 @@ int ProtocolManager::loadProtocolsFromSettings(const QString &organization, cons
     }
 
     settings.endArray();
+
+    // 如果当前协议为空或已失效，自动选择一个可用协议作为当前协议
+    // 避免上层在“添加监控”等入口处因 currentProtocol 为空而误判“协议未配置”
+    QString protocolToActivate;
+    {
+        QMutexLocker locker(&m_mutex);
+        if (!m_currentProtocol.isEmpty() && m_protocols.contains(m_currentProtocol)) {
+            protocolToActivate = m_currentProtocol;
+        } else if (!m_protocols.isEmpty()) {
+            protocolToActivate = m_protocols.firstKey();
+        }
+    }
+    if (!protocolToActivate.isEmpty()) {
+        setCurrentProtocol(protocolToActivate);
+    }
+
     const int uniqueLoadedCount = uniqueLoadedNames.size();
     qDebug() << "Loaded protocols from QSettings. unique:" << uniqueLoadedCount
              << "added:" << addedCount
@@ -198,6 +214,21 @@ void ProtocolManager::setCurrentProtocol(const QString &name)
 
     emit currentProtocolChanged(name);
     qDebug() << "Current protocol changed to:" << name;
+}
+
+QString ProtocolManager::getCurrentProtocol() const
+{
+    QMutexLocker locker(&m_mutex);
+    if (!m_currentProtocol.isEmpty() && m_protocols.contains(m_currentProtocol)) {
+        return m_currentProtocol;
+    }
+
+    // 兜底：当前协议未激活时返回第一个可用协议
+    if (!m_protocols.isEmpty()) {
+        return m_protocols.firstKey();
+    }
+
+    return QString();
 }
 
 QSharedPointer<ProtocolParser> ProtocolManager::getCurrentParser()

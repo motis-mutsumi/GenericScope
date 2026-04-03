@@ -3,11 +3,9 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QDebug>
-
 // ============================================================================
 // FieldConfig 实现
 // ============================================================================
-
 FieldConfig::FieldConfig()
     : index(0)
     , elementHead(0)
@@ -19,14 +17,12 @@ FieldConfig::FieldConfig()
     , minimum(0.0)
 {
 }
-
 QJsonObject FieldConfig::toJson() const
 {
     QJsonObject json;
     json["index"] = index;
     json["elementHead"] = elementHead;
     json["name"] = name;
-
     // 数据类型转换为字符串
     QString typeStr;
     switch (type) {
@@ -43,7 +39,6 @@ QJsonObject FieldConfig::toJson() const
         default: typeStr = "int16_t"; break;
     }
     json["type"] = typeStr;
-
     json["byteLength"] = byteLength;
     json["scale"] = scale;
     json["offset"] = offset;
@@ -52,17 +47,14 @@ QJsonObject FieldConfig::toJson() const
     json["minimum"] = minimum;
     json["description"] = description;
     json["tip"] = tip;
-
     return json;
 }
-
 FieldConfig FieldConfig::fromJson(const QJsonObject &json)
 {
     FieldConfig field;
     field.index = json["index"].toInt();
     field.elementHead = json["elementHead"].toInt();
     field.name = json["name"].toString();
-
     // 字符串转换为数据类型
     QString typeStr = json["type"].toString();
     if (typeStr == "int8_t") field.type = DataType::Int8;
@@ -76,7 +68,6 @@ FieldConfig FieldConfig::fromJson(const QJsonObject &json)
     else if (typeStr == "mbyte_t") field.type = DataType::MByte;
     else if (typeStr == "string") field.type = DataType::String;
     else field.type = DataType::Int16;
-
     field.byteLength = json["byteLength"].toInt();
     field.scale = json["scale"].toDouble(1.0);
     field.offset = json["offset"].toDouble(0.0);
@@ -85,14 +76,11 @@ FieldConfig FieldConfig::fromJson(const QJsonObject &json)
     field.minimum = json["minimum"].toDouble(0.0);
     field.description = json["description"].toString();
     field.tip = json["tip"].toString();
-
     return field;
 }
-
 // ============================================================================
 // ProtocolConfig 实现
 // ============================================================================
-
 ProtocolConfig::ProtocolConfig()
     : lengthPosition(-1)
     , checksumType(ChecksumType::None)
@@ -105,22 +93,18 @@ ProtocolConfig::ProtocolConfig()
     , frequency(1000)
 {
 }
-
 QJsonObject ProtocolConfig::toJson() const
 {
     QJsonObject json;
-
     // 协议基本信息
     json["name"] = name;
     json["version"] = version;
     json["description"] = description;
-
     // 帧格式配置
     QJsonObject frameFormat;
     frameFormat["header"] = QString::fromLatin1(frameHeader.toHex(' ').toUpper());
     frameFormat["footer"] = QString::fromLatin1(frameFooter.toHex(' ').toUpper());
     frameFormat["lengthPosition"] = lengthPosition;
-
     // 校验方式转换为字符串
     QString checksumStr;
     switch (checksumType) {
@@ -128,13 +112,11 @@ QJsonObject ProtocolConfig::toJson() const
         case ChecksumType::Sum: checksumStr = "Sum"; break;
         case ChecksumType::XOR: checksumStr = "XOR"; break;
         case ChecksumType::CRC8: checksumStr = "CRC8"; break;
-        case ChecksumType::CRC16_MODBUS: checksumStr = "CRC16_MODBUS"; break;
-        case ChecksumType::CRC16_CCITT: checksumStr = "CRC16_CCITT"; break;
+        case ChecksumType::CRC16_XMODEM: checksumStr = "CRC16"; break;
         case ChecksumType::CRC32: checksumStr = "CRC32"; break;
         default: checksumStr = "None"; break;
     }
     frameFormat["checksumType"] = checksumStr;
-
     // 校验范围转换为字符串
     QString checksumScopeStr;
     switch (checksumScope) {
@@ -145,7 +127,6 @@ QJsonObject ProtocolConfig::toJson() const
         default: checksumScopeStr = "AfterHeader"; break;
     }
     frameFormat["checksumScope"] = checksumScopeStr;
-
     frameFormat["checksumStart"] = checksumStart;
     frameFormat["checksumLength"] = checksumLength;
     frameFormat["checksumPosition"] = checksumPosition;
@@ -154,50 +135,38 @@ QJsonObject ProtocolConfig::toJson() const
     frameFormat["frequency"] = frequency;
     frameFormat["separator"] = separator;
     json["frameFormat"] = frameFormat;
-
     // 数据字段配置
     QJsonArray fieldsArray;
     for (const FieldConfig &field : fields) {
         fieldsArray.append(field.toJson());
     }
     json["fields"] = fieldsArray;
-
     return json;
 }
-
 ProtocolConfig ProtocolConfig::fromJson(const QJsonObject &json)
 {
     ProtocolConfig config;
-
     // 协议基本信息
     config.name = json["name"].toString();
     config.version = json["version"].toString();
     config.description = json["description"].toString();
-
     // 帧格式配置
     QJsonObject frameFormat = json["frameFormat"].toObject();
-
     // 解析帧头（16进制字符串转二进制）
     QString headerStr = frameFormat["header"].toString();
     config.frameHeader = QByteArray::fromHex(headerStr.remove(' ').toLatin1());
-
     // 解析帧尾
     QString footerStr = frameFormat["footer"].toString();
     config.frameFooter = QByteArray::fromHex(footerStr.remove(' ').toLatin1());
-
     config.lengthPosition = frameFormat["lengthPosition"].toInt(-1);
-
     // 解析校验方式
     QString checksumStr = frameFormat["checksumType"].toString();
     if (checksumStr == "Sum") config.checksumType = ChecksumType::Sum;
     else if (checksumStr == "XOR") config.checksumType = ChecksumType::XOR;
     else if (checksumStr == "CRC8") config.checksumType = ChecksumType::CRC8;
-    else if (checksumStr == "CRC16_MODBUS") config.checksumType = ChecksumType::CRC16_MODBUS;
-    else if (checksumStr == "CRC16_CCITT") config.checksumType = ChecksumType::CRC16_CCITT;
-    else if (checksumStr == "CRC16") config.checksumType = ChecksumType::CRC16_MODBUS;  // 向后兼容
+    else if (checksumStr == "CRC16") config.checksumType = ChecksumType::CRC16_XMODEM;
     else if (checksumStr == "CRC32") config.checksumType = ChecksumType::CRC32;
     else config.checksumType = ChecksumType::None;
-
     // 解析校验范围
     QString checksumScopeStr = frameFormat["checksumScope"].toString();
     if (checksumScopeStr == "FullFrame") config.checksumScope = ChecksumScope::FullFrame;
@@ -206,14 +175,11 @@ ProtocolConfig ProtocolConfig::fromJson(const QJsonObject &json)
     else if (checksumScopeStr == "Custom") config.checksumScope = ChecksumScope::Custom;
     else if (checksumScopeStr.isEmpty()) config.checksumScope = ChecksumScope::Custom;  // 向后兼容：旧配置没有此字段
     else config.checksumScope = ChecksumScope::AfterHeader;
-
     config.checksumStart = frameFormat["checksumStart"].toInt(0);
     config.checksumLength = frameFormat["checksumLength"].toInt(-1);
     config.checksumPosition = frameFormat["checksumPosition"].toInt(-1);
-
     QString byteOrderStr = frameFormat["byteOrder"].toString();
     config.byteOrder = (byteOrderStr == "LittleEndian") ? ByteOrder::LittleEndian : ByteOrder::BigEndian;
-
     // 读取校验码字节序，如果不存在则使用数据字节序
     QString checksumByteOrderStr = frameFormat["checksumByteOrder"].toString();
     if (!checksumByteOrderStr.isEmpty()) {
@@ -221,19 +187,15 @@ ProtocolConfig ProtocolConfig::fromJson(const QJsonObject &json)
     } else {
         config.checksumByteOrder = config.byteOrder;  // 向后兼容：默认与数据字节序相同
     }
-
     config.frequency = frameFormat["frequency"].toInt(1000);
     config.separator = frameFormat["separator"].toString();
-
     // 数据字段配置
     QJsonArray fieldsArray = json["fields"].toArray();
     for (const QJsonValue &value : fieldsArray) {
         config.fields.append(FieldConfig::fromJson(value.toObject()));
     }
-
     return config;
 }
-
 bool ProtocolConfig::saveToFile(const QString &filePath) const
 {
     QFile file(filePath);
@@ -241,14 +203,11 @@ bool ProtocolConfig::saveToFile(const QString &filePath) const
         qWarning() << "Failed to open file for writing:" << filePath;
         return false;
     }
-
     QJsonDocument doc(toJson());
     file.write(doc.toJson(QJsonDocument::Indented));
     file.close();
-
     return true;
 }
-
 ProtocolConfig ProtocolConfig::loadFromFile(const QString &filePath)
 {
     QFile file(filePath);
@@ -256,19 +215,15 @@ ProtocolConfig ProtocolConfig::loadFromFile(const QString &filePath)
         qWarning() << "Failed to open file for reading:" << filePath;
         return ProtocolConfig();
     }
-
     QByteArray data = file.readAll();
     file.close();
-
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull() || !doc.isObject()) {
         qWarning() << "Invalid JSON format:" << filePath;
         return ProtocolConfig();
     }
-
     return fromJson(doc.object());
 }
-
 bool ProtocolConfig::validate(QString *errorMsg) const
 {
     // 验证协议名称
@@ -276,18 +231,15 @@ bool ProtocolConfig::validate(QString *errorMsg) const
         if (errorMsg) *errorMsg = "Protocol name cannot be empty";
         return false;
     }
-
     // 验证帧头
     if (frameHeader.isEmpty()) {
         if (errorMsg) *errorMsg = "Frame header cannot be empty";
         return false;
     }
-
     // 验证字段
     if (fields.isEmpty()) {
         if (errorMsg) *errorMsg = "At least one field is required";
         return false;
     }
-
     return true;
 }

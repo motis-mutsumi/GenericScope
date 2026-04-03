@@ -147,7 +147,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "默认配置:\n"
                      "- 帧头: FF AA\n"
                      "- 帧尾: 0D 0A\n"
-                     "- 校验: CRC16-MODBUS\n"
+                     "- 校验: CRC16/XMODEM\n"
                      "- 字节序: 小端序\n"
                      "默认字段: Data1~Data4 (int16)";
         ui->addDefaultFieldsCheck->setEnabled(true);
@@ -158,7 +158,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "适用于: MODBUS设备通信\n"
                      "默认配置:\n"
                      "- 无帧头帧尾\n"
-                     "- 校验: CRC16-MODBUS (小端序)\n"
+                     "- 校验: CRC16/XMODEM (小端序)\n"
                      "- 数据字节序: 大端序\n"
                      "默认字段: DeviceAddr, FunctionCode, DataAddr, DataValue";
         ui->addDefaultFieldsCheck->setEnabled(true);
@@ -170,7 +170,7 @@ void NewProtocolDialog::updateTemplateDescription()
                      "默认配置:\n"
                      "- 帧头: FF AA\n"
                      "- 帧尾: 0D 0A\n"
-                     "- 校验: CRC16-CCITT\n"
+                     "- 校验: CRC16/XMODEM\n"
                      "- 字节序: 小端序\n"
                      "默认字段: Roll, Pitch, Yaw, AccX~Z, GyroX~Z, MagX~Z, Temp";
         ui->addDefaultFieldsCheck->setEnabled(true);
@@ -224,7 +224,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createSerialBasicProtoc
     CommandSettingsDialog::ProtocolConfig config;
     config.frameHeader = "FF AA";
     config.frameFooter = "0D 0A";
-    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_MODBUS;
+    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_XMODEM;
     config.checksumScope = CommandSettingsDialog::ChecksumScope::AfterHeader;
     config.byteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
@@ -253,7 +253,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createSerialBasicProtoc
 CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createModbusRTUProtocol() const
 {
     CommandSettingsDialog::ProtocolConfig config;
-    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_MODBUS;
+    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_XMODEM;
     config.checksumScope = CommandSettingsDialog::ChecksumScope::FullFrame;
     config.byteOrder = CommandSettingsDialog::ByteOrder::BigEndian;
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
@@ -313,7 +313,7 @@ CommandSettingsDialog::ProtocolConfig NewProtocolDialog::createCustomIMUProtocol
     CommandSettingsDialog::ProtocolConfig config;
     config.frameHeader = "FF AA";
     config.frameFooter = "0D 0A";
-    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_CCITT;
+    config.checksumType = CommandSettingsDialog::ChecksumType::CRC16_XMODEM;
     config.checksumScope = CommandSettingsDialog::ChecksumScope::AfterHeader;
     config.byteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;
     config.checksumByteOrder = CommandSettingsDialog::ByteOrder::LittleEndian;

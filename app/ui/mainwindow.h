@@ -51,6 +51,7 @@ private slots:
 
     // 设置菜单
     void onCommandSettingsTriggered();
+    void onCommandSendTriggered();
 
     // 协议管理
     void onProtocolChanged(const QString &name);
@@ -127,19 +128,24 @@ private:
     qint64 m_startTime;
     int m_packetCount;
     int m_errorCount;
+    int m_lastUiPacketCount;
     qint64 m_lastDataRateTime;      // 上次计算数据速率的时间
     int m_lastPacketCount;          // 上次的数据包计数
     qint64 m_lastErrorDialogTime;
     QString m_lastErrorMessage;
+    qint64 m_lastParseErrorLogTime;
+    QString m_lastParseErrorMessage;
+    int m_suppressedParseErrorCount;
 
     // 配置
     bool m_isDarkMode;
 
     // 数据表格行索引映射
     QMap<QString, int> m_tableRowMap;
+    QByteArray m_rxBuffer;  // 串口接收缓冲（解决分包/粘包）
 
     // 常量定义
-    static constexpr int kUpdateTimerInterval = 100;     // UI更新定时器间隔（毫秒）
+    static constexpr int kUpdateTimerInterval = 250;     // UI更新定时器间隔（毫秒）
     static constexpr int kDataTimerInterval = 100;       // 数据更新定时器间隔（毫秒）
     static constexpr int kTimeDisplayInterval = 100;     // 时间显示定时器间隔（毫秒）
     static constexpr int kExpectedDataFields = 13;       // 期望的数据字段数
@@ -147,6 +153,8 @@ private:
     static constexpr int kDataTableValueColumn = 1;      // 数据表格值列
     static constexpr int kDataTableUnitColumn = 2;       // 数据表格单位列
     static constexpr int kErrorDialogThrottleMs = 3000;
+    static constexpr int kParseErrorLogThrottleMs = 3000;
+    static constexpr int kChecksumResyncWarnIntervalMs = 15000;
 };
 
 #endif // MAINWINDOW_H

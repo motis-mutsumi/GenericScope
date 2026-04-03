@@ -339,6 +339,123 @@ ScopeTransferStatus ScopeUart::readData(uint8_t *data, uint32_t len)
 
 unsigned int __stdcall comRecv(void* param)
 {
+    // 新实现：底层串口线程仅做“原始字节透传”，不再按旧0x55协议预拆包。
+    // 之前的预拆包会破坏当前协议（例如帧头 AA 55 01 01 22 00）并导致上层CRC大量误报。
+    {
+        ScopeUart *objRaw = static_cast<ScopeUart*>(param);
+        auto &ov_read = objRaw->m_ovRead;
+        auto &h_com = objRaw->m_hcom;
+
+        static const DWORD kReadChunkSize = 512;
+        char readBuf[kReadChunkSize];
+        DWORD dw_error = 0;
+
+        ClearCommError(h_com, &dw_error, NULL);
+
+        while (objRaw->m_open)
+        {
+            DWORD dw_read = 0;
+            ResetEvent(ov_read.hEvent);
+
+            if (!ReadFile(h_com, readBuf, kReadChunkSize, &dw_read, &ov_read))
+            {
+                if ((dw_error = GetLastError()) == ERROR_IO_PENDING)
+                {
+                    while (objRaw->m_open && !GetOverlappedResult(h_com, &ov_read, &dw_read, FALSE))
+                    {
+                        if ((dw_error = GetLastError()) == ERROR_IO_INCOMPLETE)
+                        {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            continue;
+                        }
+                        ClearCommError(h_com, &dw_error, NULL);
+                        dw_read = 0;
+                        break;
+                    }
+                }
+                else
+                {
+                    ClearCommError(h_com, &dw_error, NULL);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    continue;
+                }
+            }
+
+            if (!objRaw->m_open)
+            {
+                return 0;
+            }
+
+            if (dw_read == 0)
+            {
+                continue;
+            }
+
+            if (objRaw->m_xferCallBackFunction != NULL)
+            {
+                objRaw->m_xferCallBackFunction(reinterpret_cast<uint8_t *>(readBuf), dw_read);
+            }
+
+            if (objRaw->m_parser && objRaw->m_parseResultCallback)
+            {
+                QByteArray newData(readBuf, static_cast<int>(dw_read));
+                {
+                    std::lock_guard<std::mutex> lock(objRaw->m_bufferMutex);
+                    objRaw->m_receiveBuffer.append(newData);
+                }
+
+                bool continueParsing = true;
+                while (continueParsing)
+                {
+                    QByteArray dataToParse;
+                    {
+                        std::lock_guard<std::mutex> lock(objRaw->m_bufferMutex);
+                        dataToParse = objRaw->m_receiveBuffer;
+                    }
+
+                    if (dataToParse.isEmpty()) {
+                        break;
+                    }
+
+                    ParseResult result = objRaw->m_parser->parse(dataToParse);
+                    if (result.success)
+                    {
+                        objRaw->m_parseResultCallback(result);
+
+                        std::lock_guard<std::mutex> lock(objRaw->m_bufferMutex);
+                        if (result.consumedBytes > 0 && result.consumedBytes <= objRaw->m_receiveBuffer.size())
+                        {
+                            objRaw->m_receiveBuffer.remove(0, result.consumedBytes);
+                        }
+                        else
+                        {
+                            qWarning() << "ScopeUart: Invalid consumedBytes:" << result.consumedBytes
+                                       << ", buffer size:" << objRaw->m_receiveBuffer.size();
+                            objRaw->m_receiveBuffer.clear();
+                            continueParsing = false;
+                        }
+                    }
+                    else
+                    {
+                        continueParsing = false;
+
+                        std::lock_guard<std::mutex> lock(objRaw->m_bufferMutex);
+                        const int MAX_BUFFER_SIZE = 4096;
+                        if (objRaw->m_receiveBuffer.size() > MAX_BUFFER_SIZE)
+                        {
+                            qWarning() << "ScopeUart: Buffer overflow ("
+                                       << objRaw->m_receiveBuffer.size() << " bytes), clearing old data";
+                            objRaw->m_receiveBuffer.clear();
+                        }
+                    }
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    #if 0
     static const uint32_t buffer_size = 100;
     static const unsigned char frame_header = {0x55};
     static const unsigned char length_padding = 1;
@@ -543,4 +660,5 @@ unsigned int __stdcall comRecv(void* param)
 
     //obj->m_shutDownDeviceCallBackFunction();
     return 0;
+    #endif
 }

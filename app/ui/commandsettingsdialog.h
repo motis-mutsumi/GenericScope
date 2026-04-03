@@ -17,6 +17,9 @@ class QComboBox;
 class QSpinBox;
 class QGroupBox;
 class QDialogButtonBox;
+class QTableWidget;
+class QHBoxLayout;
+class QVBoxLayout;
 
 namespace Ui {
 class CommandSettingsDialog;
@@ -77,8 +80,7 @@ public:
         Sum,            // 累加和
         XOR,            // 异或
         CRC8,           // CRC8
-        CRC16_MODBUS,   // CRC16-MODBUS（多项式0xA001，初值0xFFFF）
-        CRC16_CCITT,    // CRC16-CCITT（多项式0x1021，初值0xFFFF）
+        CRC16_XMODEM,   // CRC16/XMODEM（多项式0x1021，初值0x0000，不反转）
         CRC32           // CRC32（IEEE 802.3标准）
     };
 
@@ -115,6 +117,15 @@ public:
     };
 
     /**
+     * @brief 串口指令配置结构
+     */
+    struct CommandConfig {
+        QString name;            // 指令名称
+        QString payloadHex;      // 指令HEX字符串（如 "FF AA 01 00"）
+        QString description;     // 指令说明
+    };
+
+    /**
      * @brief 协议配置结构
      */
     struct ProtocolConfig {
@@ -139,6 +150,7 @@ public:
 
         // 数据字段配置
         QVector<FieldConfig> fields;
+        QVector<CommandConfig> commands;
 
         ProtocolConfig() : lengthPosition(-1), checksumType(ChecksumType::None),
                            checksumScope(ChecksumScope::AfterHeader),
@@ -176,6 +188,11 @@ private slots:
     void onMoveFieldDown();
     void onFieldCellChanged(int row, int column);
 
+    // 指令配置
+    void onAddCommand();
+    void onDeleteCommand();
+    void onCommandCellChanged(int row, int column);
+
     // 导入导出
     void onImportProtocol();
     void onExportProtocol();
@@ -200,6 +217,8 @@ private:
     void updateProtocolTabs();
     void updateFrameFormatUI();
     void updateFieldTable();
+    void updateCommandTable();
+    void setupCommandTableUI();
 
     ProtocolConfig getCurrentConfig() const;
     void setCurrentConfig(const ProtocolConfig &config);
@@ -218,6 +237,8 @@ private:
     // JSON序列化
     QJsonObject fieldToJson(const FieldConfig &field) const;
     FieldConfig jsonToField(const QJsonObject &json) const;
+    QJsonObject commandToJson(const CommandConfig &command) const;
+    CommandConfig jsonToCommand(const QJsonObject &json) const;
     QJsonObject configToJson(const ProtocolConfig &config) const;
     ProtocolConfig jsonToConfig(const QJsonObject &json) const;
 
@@ -234,6 +255,12 @@ private:
 
 private:
     Ui::CommandSettingsDialog *ui;
+
+    // 动态创建的指令配置区（避免修改特殊编码的.ui文件）
+    QGroupBox *m_commandConfigGroup;
+    QPushButton *m_addCommandBtn;
+    QPushButton *m_deleteCommandBtn;
+    QTableWidget *m_commandTable;
 
     // 数据成员
     QMap<QString, ProtocolConfig> m_protocols;
@@ -253,6 +280,11 @@ private:
     static const int kFieldTableMinColumn = 9;
     static const int kFieldTableDescColumn = 10;
     static const int kFieldTableTipColumn = 11;
+
+    // 指令表格列索引
+    static const int kCommandTableNameColumn = 0;
+    static const int kCommandTablePayloadColumn = 1;
+    static const int kCommandTableDescColumn = 2;
 };
 
 #endif // COMMANDSETTINGSDIALOG_H

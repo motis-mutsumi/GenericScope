@@ -16,6 +16,208 @@
 #include <QSettings>
 #include <QDebug>
 #include <QComboBox>
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QSignalBlocker>
+#include <QHash>
+#include <cmath>
+
+namespace {
+// 协议字段公式缓存：key=协议名，value=每行字段的(scaleExpr, offsetExpr)
+static QHash<QString, QVector<QPair<QString, QString>>> g_protocolFieldExprCache;
+
+class NumericExprParser {
+public:
+    explicit NumericExprParser(const QString &expr)
+        : m_expr(expr), m_pos(0) {}
+
+    bool parse(double *out)
+    {
+        if (!out) return false;
+        m_pos = 0;
+        double value = 0.0;
+        if (!parseExpression(value)) return false;
+        skipSpaces();
+        if (m_pos != m_expr.size()) return false;
+        if (!std::isfinite(value)) return false;
+        *out = value;
+        return true;
+    }
+
+private:
+    bool parseExpression(double &out)
+    {
+        if (!parseTerm(out)) return false;
+        while (true) {
+            skipSpaces();
+            if (match('+')) {
+                double rhs = 0.0;
+                if (!parseTerm(rhs)) return false;
+                out += rhs;
+            } else if (match('-')) {
+                double rhs = 0.0;
+                if (!parseTerm(rhs)) return false;
+                out -= rhs;
+            } else {
+                break;
+            }
+        }
+        return true;
+    }
+
+    bool parseTerm(double &out)
+    {
+        if (!parseFactor(out)) return false;
+        while (true) {
+            skipSpaces();
+            if (match('*')) {
+                double rhs = 0.0;
+                if (!parseFactor(rhs)) return false;
+                out *= rhs;
+            } else if (match('/')) {
+                double rhs = 0.0;
+                if (!parseFactor(rhs)) return false;
+                if (rhs == 0.0) return false;
+                out /= rhs;
+            } else {
+                break;
+            }
+        }
+        return true;
+    }
+
+    bool parseFactor(double &out)
+    {
+        skipSpaces();
+        if (match('+')) {
+            return parseFactor(out);
+        }
+        if (match('-')) {
+            if (!parseFactor(out)) return false;
+            out = -out;
+            return true;
+        }
+        if (match('(')) {
+            if (!parseExpression(out)) return false;
+            skipSpaces();
+            return match(')');
+        }
+        return parseNumber(out);
+    }
+
+    bool parseNumber(double &out)
+    {
+        skipSpaces();
+        const int start = m_pos;
+
+        bool hasDigits = false;
+        while (m_pos < m_expr.size() && m_expr[m_pos].isDigit()) {
+            hasDigits = true;
+            ++m_pos;
+        }
+        if (m_pos < m_expr.size() && m_expr[m_pos] == '.') {
+            ++m_pos;
+            while (m_pos < m_expr.size() && m_expr[m_pos].isDigit()) {
+                hasDigits = true;
+                ++m_pos;
+            }
+        }
+        if (!hasDigits) {
+            return false;
+        }
+
+        if (m_pos < m_expr.size() && (m_expr[m_pos] == 'e' || m_expr[m_pos] == 'E')) {
+            const int expStart = m_pos;
+            ++m_pos;
+            if (m_pos < m_expr.size() && (m_expr[m_pos] == '+' || m_expr[m_pos] == '-')) {
+                ++m_pos;
+            }
+            const int expDigitsStart = m_pos;
+            while (m_pos < m_expr.size() && m_expr[m_pos].isDigit()) {
+                ++m_pos;
+            }
+            if (expDigitsStart == m_pos) {
+                m_pos = expStart;
+            }
+        }
+
+        bool ok = false;
+        out = m_expr.mid(start, m_pos - start).toDouble(&ok);
+        return ok && std::isfinite(out);
+    }
+
+    void skipSpaces()
+    {
+        while (m_pos < m_expr.size() && m_expr[m_pos].isSpace()) {
+            ++m_pos;
+        }
+    }
+
+    bool match(QChar ch)
+    {
+        if (m_pos < m_expr.size() && m_expr[m_pos] == ch) {
+            ++m_pos;
+            return true;
+        }
+        return false;
+    }
+
+    QString m_expr;
+    int m_pos;
+};
+
+static bool evaluateNumericExpression(const QString &rawExpr, double *out)
+{
+    if (!out) return false;
+    QString expr = rawExpr.trimmed();
+    if (expr.isEmpty()) return false;
+
+    // 兼容用户常见写法："/65536*35" => "1/65536*35"
+    if (expr.startsWith('/') || expr.startsWith('*')) {
+        expr.prepend('1');
+    }
+
+    // 纯数字（含科学计数法）优先使用Qt解析，避免误判
+    bool ok = false;
+    const double directValue = expr.toDouble(&ok);
+    if (ok && std::isfinite(directValue)) {
+        *out = directValue;
+        return true;
+    }
+
+    NumericExprParser parser(expr);
+    return parser.parse(out);
+}
+
+static double evaluateNumericExpressionOrDefault(const QString &rawExpr, double defaultValue)
+{
+    double value = 0.0;
+    return evaluateNumericExpression(rawExpr, &value) ? value : defaultValue;
+}
+
+static double jsonValueToNumberWithExpression(const QJsonValue &value, double defaultValue)
+{
+    if (value.isDouble()) {
+        const double v = value.toDouble(defaultValue);
+        return std::isfinite(v) ? v : defaultValue;
+    }
+    if (value.isString()) {
+        return evaluateNumericExpressionOrDefault(value.toString(), defaultValue);
+    }
+    return defaultValue;
+}
+
+static QString formatDoubleForDisplay(double value)
+{
+    return QString::number(value, 'g', 12);
+}
+
+static QString normalizedExprOrEmpty(const QString &expr)
+{
+    return expr.trimmed();
+}
+} // namespace
 
 // 表格列索引常量定义
 const int CommandSettingsDialog::kFieldTableIndexColumn;
@@ -30,10 +232,17 @@ const int CommandSettingsDialog::kFieldTableMaxColumn;
 const int CommandSettingsDialog::kFieldTableMinColumn;
 const int CommandSettingsDialog::kFieldTableDescColumn;
 const int CommandSettingsDialog::kFieldTableTipColumn;
+const int CommandSettingsDialog::kCommandTableNameColumn;
+const int CommandSettingsDialog::kCommandTablePayloadColumn;
+const int CommandSettingsDialog::kCommandTableDescColumn;
 
 CommandSettingsDialog::CommandSettingsDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::CommandSettingsDialog)
+    , m_commandConfigGroup(nullptr)
+    , m_addCommandBtn(nullptr)
+    , m_deleteCommandBtn(nullptr)
+    , m_commandTable(nullptr)
     , m_isModified(false)
 {
     ui->setupUi(this);
@@ -55,11 +264,26 @@ CommandSettingsDialog::~CommandSettingsDialog()
 void CommandSettingsDialog::setupUI()
 {
     // UI已经通过.ui文件创建，这里只需要设置表格列宽和按钮文本
+    setupCommandTableUI();
     setupTableColumns();
 
     // 设置Splitter的拉伸比例
-    ui->splitter->setStretchFactor(0, 1);  // 左侧帧格式配置
+    ui->splitter->setStretchFactor(0, 2);  // 左侧帧格式配置（加宽）
     ui->splitter->setStretchFactor(1, 3);  // 右侧字段配置
+
+    // 修复左侧配置项显示不全：统一增大关键输入控件宽度
+    ui->frameHeaderEdit->setMinimumWidth(220);
+    ui->frameFooterEdit->setMinimumWidth(220);
+    ui->separatorEdit->setMinimumWidth(220);
+
+    ui->checksumTypeCombo->setMinimumWidth(160);
+    ui->byteOrderCombo->setMinimumWidth(160);
+
+    ui->lengthPositionSpin->setMinimumWidth(140);
+    ui->checksumStartSpin->setMinimumWidth(140);
+    ui->checksumLengthSpin->setMinimumWidth(140);
+    ui->checksumPositionSpin->setMinimumWidth(140);
+    ui->frequencySpin->setMinimumWidth(140);
 
     // 设置对话框按钮文本（中文化）
     QPushButton *okBtn = ui->buttonBox->button(QDialogButtonBox::Ok);
@@ -79,7 +303,7 @@ void CommandSettingsDialog::setupTableColumns()
     ui->fieldTable->setColumnWidth(kFieldTableIndexColumn, 50);       // 序号
     ui->fieldTable->setColumnWidth(kFieldTableElementHeadColumn, 70); // 起始
     ui->fieldTable->setColumnWidth(kFieldTableNameColumn, 120);       // 名称（加宽）
-    ui->fieldTable->setColumnWidth(kFieldTableTypeColumn, 90);        // 类型
+    ui->fieldTable->setColumnWidth(kFieldTableTypeColumn, 150);       // 类型（加宽，避免下拉内容被截断）
     ui->fieldTable->setColumnWidth(kFieldTableByteLengthColumn, 60);  // 长度
     ui->fieldTable->setColumnWidth(kFieldTableScaleColumn, 90);       // 缩放因子
     ui->fieldTable->setColumnWidth(kFieldTableOffsetColumn, 80);      // 偏移量
@@ -87,6 +311,12 @@ void CommandSettingsDialog::setupTableColumns()
     ui->fieldTable->setColumnWidth(kFieldTableMaxColumn, 80);         // 最大值
     ui->fieldTable->setColumnWidth(kFieldTableMinColumn, 80);         // 最小值
     ui->fieldTable->setColumnWidth(kFieldTableDescColumn, 150);       // 描述（加宽）
+
+    if (m_commandTable) {
+        m_commandTable->setColumnWidth(kCommandTableNameColumn, 180);
+        m_commandTable->setColumnWidth(kCommandTablePayloadColumn, 360);
+        m_commandTable->horizontalHeader()->setStretchLastSection(true);
+    }
 }
 
 void CommandSettingsDialog::setupConnections()
@@ -122,6 +352,20 @@ void CommandSettingsDialog::setupConnections()
             this, &CommandSettingsDialog::onImportFields);
     connect(ui->fieldTable, &QTableWidget::cellChanged,
             this, &CommandSettingsDialog::onFieldCellChanged);
+
+    // 指令配置
+    if (m_addCommandBtn) {
+        connect(m_addCommandBtn, &QPushButton::clicked,
+                this, &CommandSettingsDialog::onAddCommand);
+    }
+    if (m_deleteCommandBtn) {
+        connect(m_deleteCommandBtn, &QPushButton::clicked,
+                this, &CommandSettingsDialog::onDeleteCommand);
+    }
+    if (m_commandTable) {
+        connect(m_commandTable, &QTableWidget::cellChanged,
+                this, &CommandSettingsDialog::onCommandCellChanged);
+    }
 
     // 导入导出
     connect(ui->importProtocolBtn, &QPushButton::clicked,
@@ -211,7 +455,16 @@ void CommandSettingsDialog::onTabChanged(int index)
         return;
     }
 
-    QString name = ui->tabWidget->tabText(index);
+    const QString name = ui->tabWidget->tabText(index);
+    if (name == m_currentProtocolName) {
+        return;
+    }
+
+    // 切换标签前先保存当前页编辑内容，避免未应用内容丢失
+    if (!m_currentProtocolName.isEmpty() && m_protocols.contains(m_currentProtocolName)) {
+        m_protocols[m_currentProtocolName] = getCurrentConfig();
+    }
+
     if (m_protocols.contains(name)) {
         m_currentProtocolName = name;
         setCurrentConfig(m_protocols[name]);
@@ -222,21 +475,15 @@ void CommandSettingsDialog::onTabChanged(int index)
 
 void CommandSettingsDialog::onFrameHeaderChanged()
 {
-    QString header = ui->frameHeaderEdit->text().trimmed();
-    if (!validateHexString(header) && !header.isEmpty()) {
-        QMessageBox::warning(this, "警告", "帧头格式错误！请输入16进制字符串，如: FF AA");
-        return;
-    }
+    // 输入过程中不弹窗校验，避免中间态（如奇数字节）误报
+    // 最终在“应用/确定”时由 validateConfig() 统一校验
     m_isModified = true;
 }
 
 void CommandSettingsDialog::onFrameFooterChanged()
 {
-    QString footer = ui->frameFooterEdit->text().trimmed();
-    if (!validateHexString(footer) && !footer.isEmpty()) {
-        QMessageBox::warning(this, "警告", "帧尾格式错误！请输入16进制字符串，如: 0D 0A");
-        return;
-    }
+    // 输入过程中不弹窗校验，避免中间态误报
+    // 最终在“应用/确定”时由 validateConfig() 统一校验
     m_isModified = true;
 }
 
@@ -276,6 +523,8 @@ void CommandSettingsDialog::onAddField()
     typeCombo->addItems({"int8_t", "uint8_t", "int16_t", "uint16_t",
                          "int32_t", "uint32_t", "float", "double",
                          "mbyte_t", "string"});
+    typeCombo->setMinimumContentsLength(8);
+    typeCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     typeCombo->setCurrentText("int16_t");
     ui->fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
 
@@ -367,6 +616,62 @@ void CommandSettingsDialog::onFieldCellChanged(int row, int column)
 {
     Q_UNUSED(row);
     Q_UNUSED(column);
+    m_isModified = true;
+}
+
+void CommandSettingsDialog::onAddCommand()
+{
+    if (!m_commandTable) {
+        return;
+    }
+
+    const int row = m_commandTable->rowCount();
+    m_commandTable->insertRow(row);
+    m_commandTable->setItem(row, kCommandTableNameColumn,
+                            new QTableWidgetItem(QString("指令%1").arg(row + 1)));
+    m_commandTable->setItem(row, kCommandTablePayloadColumn,
+                            new QTableWidgetItem("FF AA 00 00"));
+    m_commandTable->setItem(row, kCommandTableDescColumn,
+                            new QTableWidgetItem(""));
+
+    m_commandTable->setCurrentCell(row, kCommandTableNameColumn);
+    m_isModified = true;
+}
+
+void CommandSettingsDialog::onDeleteCommand()
+{
+    if (!m_commandTable) {
+        return;
+    }
+
+    const int currentRow = m_commandTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "警告", "请先选择要删除的指令！");
+        return;
+    }
+
+    m_commandTable->removeRow(currentRow);
+    m_isModified = true;
+}
+
+void CommandSettingsDialog::onCommandCellChanged(int row, int column)
+{
+    if (!m_commandTable) {
+        return;
+    }
+
+    // 输入时做HEX格式轻量规范化（仅处理指令列）
+    if (column == kCommandTablePayloadColumn) {
+        QTableWidgetItem *item = m_commandTable->item(row, column);
+        if (item) {
+            QString text = item->text().toUpper().simplified();
+            if (text != item->text()) {
+                const QSignalBlocker blocker(m_commandTable);
+                item->setText(text);
+            }
+        }
+    }
+
     m_isModified = true;
 }
 
@@ -663,7 +968,13 @@ void CommandSettingsDialog::updateFrameFormatUI()
     ui->frameFooterEdit->setText(config.frameFooter);
     ui->lengthPositionSpin->setValue(config.lengthPosition);
 
-    ui->checksumTypeCombo->setCurrentText(checksumTypeToString(config.checksumType));
+    QString checksumTypeText = checksumTypeToString(config.checksumType);
+    int checksumIndex = ui->checksumTypeCombo->findText(checksumTypeText);
+    if (checksumIndex >= 0) {
+        ui->checksumTypeCombo->setCurrentIndex(checksumIndex);
+    } else {
+        ui->checksumTypeCombo->setCurrentText(checksumTypeText);
+    }
     ui->checksumStartSpin->setValue(config.checksumStart);
     ui->checksumLengthSpin->setValue(config.checksumLength);
     ui->checksumPositionSpin->setValue(config.checksumPosition);
@@ -682,6 +993,7 @@ void CommandSettingsDialog::updateFieldTable()
     }
 
     const ProtocolConfig &config = m_protocols[m_currentProtocolName];
+    const QVector<QPair<QString, QString>> exprRows = g_protocolFieldExprCache.value(m_currentProtocolName);
 
     for (int i = 0; i < config.fields.size(); ++i) {
         const FieldConfig &field = config.fields[i];
@@ -701,15 +1013,29 @@ void CommandSettingsDialog::updateFieldTable()
         typeCombo->addItems({"int8_t", "uint8_t", "int16_t", "uint16_t",
                              "int32_t", "uint32_t", "float", "double",
                              "mbyte_t", "string"});
+        typeCombo->setMinimumContentsLength(8);
+        typeCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
         typeCombo->setCurrentText(dataTypeToString(field.type));
         ui->fieldTable->setCellWidget(row, kFieldTableTypeColumn, typeCombo);
 
         ui->fieldTable->setItem(row, kFieldTableByteLengthColumn,
                               new QTableWidgetItem(QString::number(field.byteLength)));
+        QString scaleText = formatDoubleForDisplay(field.scale);
+        QString offsetText = formatDoubleForDisplay(field.offset);
+        if (i < exprRows.size()) {
+            const QString exprScale = normalizedExprOrEmpty(exprRows[i].first);
+            const QString exprOffset = normalizedExprOrEmpty(exprRows[i].second);
+            if (!exprScale.isEmpty()) {
+                scaleText = exprScale;
+            }
+            if (!exprOffset.isEmpty()) {
+                offsetText = exprOffset;
+            }
+        }
         ui->fieldTable->setItem(row, kFieldTableScaleColumn,
-                              new QTableWidgetItem(QString::number(field.scale, 'g', 6)));
+                              new QTableWidgetItem(scaleText));
         ui->fieldTable->setItem(row, kFieldTableOffsetColumn,
-                              new QTableWidgetItem(QString::number(field.offset, 'g', 6)));
+                              new QTableWidgetItem(offsetText));
         ui->fieldTable->setItem(row, kFieldTableUnitColumn,
                               new QTableWidgetItem(field.unit));
         ui->fieldTable->setItem(row, kFieldTableMaxColumn,
@@ -720,6 +1046,33 @@ void CommandSettingsDialog::updateFieldTable()
                               new QTableWidgetItem(field.description));
         ui->fieldTable->setItem(row, kFieldTableTipColumn,
                               new QTableWidgetItem(field.tip));
+    }
+}
+
+void CommandSettingsDialog::updateCommandTable()
+{
+    if (!m_commandTable) {
+        return;
+    }
+
+    const QSignalBlocker blocker(m_commandTable);
+    m_commandTable->setRowCount(0);
+
+    if (!m_protocols.contains(m_currentProtocolName)) {
+        return;
+    }
+
+    const ProtocolConfig &config = m_protocols[m_currentProtocolName];
+    for (int i = 0; i < config.commands.size(); ++i) {
+        const CommandConfig &cmd = config.commands[i];
+        const int row = m_commandTable->rowCount();
+        m_commandTable->insertRow(row);
+        m_commandTable->setItem(row, kCommandTableNameColumn,
+                                new QTableWidgetItem(cmd.name));
+        m_commandTable->setItem(row, kCommandTablePayloadColumn,
+                                new QTableWidgetItem(cmd.payloadHex));
+        m_commandTable->setItem(row, kCommandTableDescColumn,
+                                new QTableWidgetItem(cmd.description));
     }
 }
 
@@ -738,16 +1091,22 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
     config.lengthPosition = ui->lengthPositionSpin->value();
 
     config.checksumType = stringToChecksumType(ui->checksumTypeCombo->currentText());
+    // 当前界面提供了“起始/长度/位置”三项，按自定义范围生效，避免被默认AfterHeader覆盖
+    config.checksumScope = ChecksumScope::Custom;
     config.checksumStart = ui->checksumStartSpin->value();
     config.checksumLength = ui->checksumLengthSpin->value();
     config.checksumPosition = ui->checksumPositionSpin->value();
 
     config.byteOrder = stringToByteOrder(ui->byteOrderCombo->currentText());
+    // 当前版本将校验码字节序与数据字节序保持一致，避免CRC字节顺序与用户设置不一致
+    config.checksumByteOrder = config.byteOrder;
     config.frequency = ui->frequencySpin->value();
     config.separator = ui->separatorEdit->text().trimmed();
 
     // 读取字段配置 - 从所有12列读取
     config.fields.clear();
+    QVector<QPair<QString, QString>> exprRows;
+    exprRows.reserve(ui->fieldTable->rowCount());
     for (int row = 0; row < ui->fieldTable->rowCount(); ++row) {
         FieldConfig field;
         field.index = ui->fieldTable->item(row, kFieldTableIndexColumn)->text().toInt();
@@ -761,15 +1120,56 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
         }
 
         field.byteLength = ui->fieldTable->item(row, kFieldTableByteLengthColumn)->text().toInt();
-        field.scale = ui->fieldTable->item(row, kFieldTableScaleColumn)->text().toDouble();
-        field.offset = ui->fieldTable->item(row, kFieldTableOffsetColumn)->text().toDouble();
+        const QString scaleExpr = ui->fieldTable->item(row, kFieldTableScaleColumn)
+                                  ? ui->fieldTable->item(row, kFieldTableScaleColumn)->text().trimmed()
+                                  : QString();
+        const QString offsetExpr = ui->fieldTable->item(row, kFieldTableOffsetColumn)
+                                   ? ui->fieldTable->item(row, kFieldTableOffsetColumn)->text().trimmed()
+                                   : QString();
+        field.scale = evaluateNumericExpressionOrDefault(scaleExpr, 1.0);
+        field.offset = evaluateNumericExpressionOrDefault(offsetExpr, 0.0);
         field.unit = ui->fieldTable->item(row, kFieldTableUnitColumn)->text();
-        field.maximum = ui->fieldTable->item(row, kFieldTableMaxColumn)->text().toDouble();
-        field.minimum = ui->fieldTable->item(row, kFieldTableMinColumn)->text().toDouble();
+        field.maximum = evaluateNumericExpressionOrDefault(
+            ui->fieldTable->item(row, kFieldTableMaxColumn)->text(), 0.0);
+        field.minimum = evaluateNumericExpressionOrDefault(
+            ui->fieldTable->item(row, kFieldTableMinColumn)->text(), 0.0);
         field.description = ui->fieldTable->item(row, kFieldTableDescColumn)->text();
         field.tip = ui->fieldTable->item(row, kFieldTableTipColumn)->text();
 
         config.fields.append(field);
+        exprRows.append(qMakePair(scaleExpr, offsetExpr));
+    }
+
+    // 公式缓存同时按“当前标签键”和“协议名”保存，避免键名不一致导致回显丢失
+    if (!m_currentProtocolName.isEmpty()) {
+        g_protocolFieldExprCache[m_currentProtocolName] = exprRows;
+    }
+    if (!config.name.isEmpty()) {
+        g_protocolFieldExprCache[config.name] = exprRows;
+    }
+
+    // 读取指令配置
+    config.commands.clear();
+    if (m_commandTable) {
+        for (int row = 0; row < m_commandTable->rowCount(); ++row) {
+            const QTableWidgetItem *nameItem = m_commandTable->item(row, kCommandTableNameColumn);
+            const QTableWidgetItem *payloadItem = m_commandTable->item(row, kCommandTablePayloadColumn);
+            const QTableWidgetItem *descItem = m_commandTable->item(row, kCommandTableDescColumn);
+
+            const QString name = nameItem ? nameItem->text().trimmed() : QString();
+            const QString payloadHex = payloadItem ? payloadItem->text().trimmed().toUpper() : QString();
+            const QString description = descItem ? descItem->text().trimmed() : QString();
+
+            if (name.isEmpty() && payloadHex.isEmpty() && description.isEmpty()) {
+                continue;
+            }
+
+            CommandConfig cmd;
+            cmd.name = name;
+            cmd.payloadHex = payloadHex;
+            cmd.description = description;
+            config.commands.append(cmd);
+        }
     }
 
     return config;
@@ -777,8 +1177,10 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::getCurrentConfig() 
 
 void CommandSettingsDialog::setCurrentConfig(const ProtocolConfig &config)
 {
+    Q_UNUSED(config);
     updateFrameFormatUI();
     updateFieldTable();
+    updateCommandTable();
 }
 
 // ========== 验证函数 ==========
@@ -813,6 +1215,67 @@ bool CommandSettingsDialog::validateConfig(QString *errorMsg)
     if (ui->fieldTable->rowCount() == 0) {
         if (errorMsg) *errorMsg = "至少需要配置一个数据字段！";
         return false;
+    }
+    for (int row = 0; row < ui->fieldTable->rowCount(); ++row) {
+        const QString scaleText = ui->fieldTable->item(row, kFieldTableScaleColumn)
+                                  ? ui->fieldTable->item(row, kFieldTableScaleColumn)->text().trimmed()
+                                  : QString();
+        const QString offsetText = ui->fieldTable->item(row, kFieldTableOffsetColumn)
+                                   ? ui->fieldTable->item(row, kFieldTableOffsetColumn)->text().trimmed()
+                                   : QString();
+        const QString maxText = ui->fieldTable->item(row, kFieldTableMaxColumn)
+                                ? ui->fieldTable->item(row, kFieldTableMaxColumn)->text().trimmed()
+                                : QString();
+        const QString minText = ui->fieldTable->item(row, kFieldTableMinColumn)
+                                ? ui->fieldTable->item(row, kFieldTableMinColumn)->text().trimmed()
+                                : QString();
+
+        double tmp = 0.0;
+        if (!scaleText.isEmpty() && !evaluateNumericExpression(scaleText, &tmp)) {
+            if (errorMsg) *errorMsg = QString("第%1行缩放因子格式错误：%2").arg(row + 1).arg(scaleText);
+            return false;
+        }
+        if (!offsetText.isEmpty() && !evaluateNumericExpression(offsetText, &tmp)) {
+            if (errorMsg) *errorMsg = QString("第%1行偏移量格式错误：%2").arg(row + 1).arg(offsetText);
+            return false;
+        }
+        if (!maxText.isEmpty() && !evaluateNumericExpression(maxText, &tmp)) {
+            if (errorMsg) *errorMsg = QString("第%1行最大值格式错误：%2").arg(row + 1).arg(maxText);
+            return false;
+        }
+        if (!minText.isEmpty() && !evaluateNumericExpression(minText, &tmp)) {
+            if (errorMsg) *errorMsg = QString("第%1行最小值格式错误：%2").arg(row + 1).arg(minText);
+            return false;
+        }
+    }
+
+    // 验证指令HEX
+    if (m_commandTable) {
+        for (int row = 0; row < m_commandTable->rowCount(); ++row) {
+            const QString name = m_commandTable->item(row, kCommandTableNameColumn)
+                                 ? m_commandTable->item(row, kCommandTableNameColumn)->text().trimmed()
+                                 : QString();
+            const QString payload = m_commandTable->item(row, kCommandTablePayloadColumn)
+                                    ? m_commandTable->item(row, kCommandTablePayloadColumn)->text().trimmed()
+                                    : QString();
+
+            if (name.isEmpty() && payload.isEmpty()) {
+                continue;
+            }
+
+            if (name.isEmpty()) {
+                if (errorMsg) *errorMsg = QString("第%1条指令缺少名称！").arg(row + 1);
+                return false;
+            }
+            if (payload.isEmpty()) {
+                if (errorMsg) *errorMsg = QString("第%1条指令缺少HEX内容！").arg(row + 1);
+                return false;
+            }
+            if (!validateHexString(payload)) {
+                if (errorMsg) *errorMsg = QString("第%1条指令HEX格式错误：%2").arg(row + 1).arg(payload);
+                return false;
+            }
+        }
     }
 
     return true;
@@ -883,8 +1346,7 @@ QString CommandSettingsDialog::checksumTypeToString(ChecksumType type) const
         case ChecksumType::Sum: return "Sum";
         case ChecksumType::XOR: return "XOR";
         case ChecksumType::CRC8: return "CRC8";
-        case ChecksumType::CRC16_MODBUS: return "CRC16-MODBUS";
-        case ChecksumType::CRC16_CCITT: return "CRC16-CCITT";
+        case ChecksumType::CRC16_XMODEM: return "CRC16";
         case ChecksumType::CRC32: return "CRC32";
         default: return "无校验";
     }
@@ -895,11 +1357,28 @@ CommandSettingsDialog::ChecksumType CommandSettingsDialog::stringToChecksumType(
     if (str == "Sum") return ChecksumType::Sum;
     if (str == "XOR") return ChecksumType::XOR;
     if (str == "CRC8") return ChecksumType::CRC8;
-    if (str == "CRC16-MODBUS") return ChecksumType::CRC16_MODBUS;
-    if (str == "CRC16-CCITT") return ChecksumType::CRC16_CCITT;
-    if (str == "CRC16") return ChecksumType::CRC16_MODBUS;  // 向后兼容：旧配置的"CRC16"映射为MODBUS
+    if (str == "CRC16") return ChecksumType::CRC16_XMODEM;
     if (str == "CRC32") return ChecksumType::CRC32;
     return ChecksumType::None;
+}
+
+static QString checksumScopeToString(CommandSettingsDialog::ChecksumScope scope)
+{
+    switch (scope) {
+        case CommandSettingsDialog::ChecksumScope::FullFrame:   return "FullFrame";
+        case CommandSettingsDialog::ChecksumScope::AfterHeader: return "AfterHeader";
+        case CommandSettingsDialog::ChecksumScope::DataOnly:    return "DataOnly";
+        case CommandSettingsDialog::ChecksumScope::Custom:
+        default:                                                return "Custom";
+    }
+}
+
+static CommandSettingsDialog::ChecksumScope stringToChecksumScope(const QString &str)
+{
+    if (str == "FullFrame") return CommandSettingsDialog::ChecksumScope::FullFrame;
+    if (str == "AfterHeader") return CommandSettingsDialog::ChecksumScope::AfterHeader;
+    if (str == "DataOnly") return CommandSettingsDialog::ChecksumScope::DataOnly;
+    return CommandSettingsDialog::ChecksumScope::Custom;
 }
 
 // ========== JSON序列化函数 ==========
@@ -930,14 +1409,37 @@ CommandSettingsDialog::FieldConfig CommandSettingsDialog::jsonToField(const QJso
     field.name = json["name"].toString();
     field.type = stringToDataType(json["type"].toString());
     field.byteLength = json["byteLength"].toInt();
-    field.scale = json["scale"].toDouble(1.0);
-    field.offset = json["offset"].toDouble(0.0);
+    field.scale = jsonValueToNumberWithExpression(json["scale"], 1.0);
+    field.offset = jsonValueToNumberWithExpression(json["offset"], 0.0);
     field.unit = json["unit"].toString();
-    field.maximum = json["maximum"].toDouble(0.0);
-    field.minimum = json["minimum"].toDouble(0.0);
+    field.maximum = jsonValueToNumberWithExpression(json["maximum"], 0.0);
+    field.minimum = jsonValueToNumberWithExpression(json["minimum"], 0.0);
     field.description = json["description"].toString();
     field.tip = json["tip"].toString();
     return field;
+}
+
+QJsonObject CommandSettingsDialog::commandToJson(const CommandConfig &command) const
+{
+    QJsonObject json;
+    json["name"] = command.name;
+    json["payloadHex"] = command.payloadHex;
+    json["description"] = command.description;
+    return json;
+}
+
+CommandSettingsDialog::CommandConfig CommandSettingsDialog::jsonToCommand(const QJsonObject &json) const
+{
+    CommandConfig command;
+    command.name = json["name"].toString().trimmed();
+    command.payloadHex = json["payloadHex"].toString().trimmed().toUpper();
+    command.description = json["description"].toString().trimmed();
+
+    // 向后兼容旧字段名
+    if (command.payloadHex.isEmpty()) {
+        command.payloadHex = json["payload"].toString().trimmed().toUpper();
+    }
+    return command;
 }
 
 QJsonObject CommandSettingsDialog::configToJson(const ProtocolConfig &config) const
@@ -955,20 +1457,42 @@ QJsonObject CommandSettingsDialog::configToJson(const ProtocolConfig &config) co
     frameFormat["footer"] = config.frameFooter;
     frameFormat["lengthPosition"] = config.lengthPosition;
     frameFormat["checksumType"] = checksumTypeToString(config.checksumType);
+    frameFormat["checksumScope"] = checksumScopeToString(config.checksumScope);
     frameFormat["checksumStart"] = config.checksumStart;
     frameFormat["checksumLength"] = config.checksumLength;
     frameFormat["checksumPosition"] = config.checksumPosition;
     frameFormat["byteOrder"] = byteOrderToString(config.byteOrder);
+    frameFormat["checksumByteOrder"] = byteOrderToString(config.checksumByteOrder);
     frameFormat["frequency"] = config.frequency;
     frameFormat["separator"] = config.separator;
     json["frameFormat"] = frameFormat;
 
     // 数据字段配置
     QJsonArray fields;
-    for (const FieldConfig &field : config.fields) {
-        fields.append(fieldToJson(field));
+    const QVector<QPair<QString, QString>> exprRows = g_protocolFieldExprCache.value(config.name);
+    for (int i = 0; i < config.fields.size(); ++i) {
+        const FieldConfig &field = config.fields[i];
+        QJsonObject fieldJson = fieldToJson(field);
+        if (i < exprRows.size()) {
+            const QString scaleExpr = normalizedExprOrEmpty(exprRows[i].first);
+            const QString offsetExpr = normalizedExprOrEmpty(exprRows[i].second);
+            if (!scaleExpr.isEmpty()) {
+                fieldJson["scaleExpr"] = scaleExpr;
+            }
+            if (!offsetExpr.isEmpty()) {
+                fieldJson["offsetExpr"] = offsetExpr;
+            }
+        }
+        fields.append(fieldJson);
     }
     json["fields"] = fields;
+
+    // 串口指令配置
+    QJsonArray commands;
+    for (const CommandConfig &command : config.commands) {
+        commands.append(commandToJson(command));
+    }
+    json["commands"] = commands;
 
     return json;
 }
@@ -988,17 +1512,51 @@ CommandSettingsDialog::ProtocolConfig CommandSettingsDialog::jsonToConfig(const 
     config.frameFooter = frameFormat["footer"].toString();
     config.lengthPosition = frameFormat["lengthPosition"].toInt(-1);
     config.checksumType = stringToChecksumType(frameFormat["checksumType"].toString());
+    config.checksumScope = stringToChecksumScope(frameFormat["checksumScope"].toString());
     config.checksumStart = frameFormat["checksumStart"].toInt(0);
     config.checksumLength = frameFormat["checksumLength"].toInt(-1);
     config.checksumPosition = frameFormat["checksumPosition"].toInt(-1);
     config.byteOrder = stringToByteOrder(frameFormat["byteOrder"].toString());
+    const QString checksumByteOrderStr = frameFormat["checksumByteOrder"].toString();
+    config.checksumByteOrder = checksumByteOrderStr.isEmpty()
+        ? config.byteOrder
+        : stringToByteOrder(checksumByteOrderStr);
     config.frequency = frameFormat["frequency"].toInt(1000);
     config.separator = frameFormat["separator"].toString();
 
     // 数据字段配置
     QJsonArray fields = json["fields"].toArray();
+    QVector<QPair<QString, QString>> exprRows;
+    exprRows.reserve(fields.size());
     for (const QJsonValue &value : fields) {
-        config.fields.append(jsonToField(value.toObject()));
+        const QJsonObject fieldObj = value.toObject();
+        config.fields.append(jsonToField(fieldObj));
+
+        QString scaleExpr = fieldObj["scaleExpr"].toString().trimmed();
+        QString offsetExpr = fieldObj["offsetExpr"].toString().trimmed();
+        // 向后兼容：如果旧数据把表达式直接写进了scale/offset字符串，也识别为公式显示
+        if (scaleExpr.isEmpty() && fieldObj["scale"].isString()) {
+            scaleExpr = fieldObj["scale"].toString().trimmed();
+        }
+        if (offsetExpr.isEmpty() && fieldObj["offset"].isString()) {
+            offsetExpr = fieldObj["offset"].toString().trimmed();
+        }
+        exprRows.append(qMakePair(scaleExpr, offsetExpr));
+    }
+    if (!config.name.isEmpty()) {
+        g_protocolFieldExprCache[config.name] = exprRows;
+    }
+
+    // 串口指令配置
+    QJsonArray commands = json["commands"].toArray();
+    for (const QJsonValue &value : commands) {
+        if (!value.isObject()) {
+            continue;
+        }
+        CommandConfig cmd = jsonToCommand(value.toObject());
+        if (!cmd.name.isEmpty() && !cmd.payloadHex.isEmpty()) {
+            config.commands.append(cmd);
+        }
     }
 
     return config;
@@ -1021,6 +1579,15 @@ void CommandSettingsDialog::loadProtocols()
         if (!doc.isNull() && doc.isObject()) {
             ProtocolConfig config = jsonToConfig(doc.object());
             m_protocols[name] = config;
+            // 标签键(name)与协议名(config.name)可能不同，公式缓存做一次双向对齐
+            if (g_protocolFieldExprCache.contains(config.name) &&
+                !g_protocolFieldExprCache.contains(name)) {
+                g_protocolFieldExprCache[name] = g_protocolFieldExprCache.value(config.name);
+            } else if (g_protocolFieldExprCache.contains(name) &&
+                       !config.name.isEmpty() &&
+                       !g_protocolFieldExprCache.contains(config.name)) {
+                g_protocolFieldExprCache[config.name] = g_protocolFieldExprCache.value(name);
+            }
         }
     }
 
@@ -1035,6 +1602,7 @@ void CommandSettingsDialog::loadProtocols()
         defaultConfig.frameHeader = "FF AA";
         defaultConfig.checksumType = ChecksumType::None;
         defaultConfig.byteOrder = ByteOrder::LittleEndian;
+        defaultConfig.checksumByteOrder = ByteOrder::LittleEndian;
         defaultConfig.frequency = 1000;
 
         m_protocols[defaultConfig.name] = defaultConfig;
@@ -1055,6 +1623,18 @@ void CommandSettingsDialog::saveProtocols()
     for (auto it = m_protocols.begin(); it != m_protocols.end(); ++it) {
         settings.setArrayIndex(index++);
         settings.setValue("name", it.key());
+
+        // 保存前对齐公式缓存键，确保“标签键”和“协议名”任一可命中
+        const ProtocolConfig &cfg = it.value();
+        if (g_protocolFieldExprCache.contains(it.key()) &&
+            !cfg.name.isEmpty() &&
+            !g_protocolFieldExprCache.contains(cfg.name)) {
+            g_protocolFieldExprCache[cfg.name] = g_protocolFieldExprCache.value(it.key());
+        } else if (!cfg.name.isEmpty() &&
+                   g_protocolFieldExprCache.contains(cfg.name) &&
+                   !g_protocolFieldExprCache.contains(it.key())) {
+            g_protocolFieldExprCache[it.key()] = g_protocolFieldExprCache.value(cfg.name);
+        }
 
         QJsonObject json = configToJson(it.value());
         QJsonDocument doc(json);
@@ -1140,6 +1720,49 @@ void CommandSettingsDialog::syncToProtocolManager()
     }
 
     qDebug() << "已同步" << m_protocols.size() << "个协议到ProtocolManager，移除" << removedCount << "个过期协议";
+}
+
+void CommandSettingsDialog::setupCommandTableUI()
+{
+    if (!ui->fieldConfigLayout || m_commandConfigGroup) {
+        return;
+    }
+
+    m_commandConfigGroup = new QGroupBox("指令配置", this);
+    m_commandConfigGroup->setMinimumHeight(220);
+
+    auto *groupLayout = new QVBoxLayout(m_commandConfigGroup);
+    groupLayout->setSpacing(6);
+
+    auto *toolbarWidget = new QWidget(m_commandConfigGroup);
+    auto *toolbarLayout = new QHBoxLayout(toolbarWidget);
+    toolbarLayout->setContentsMargins(0, 0, 0, 0);
+    toolbarLayout->setSpacing(8);
+
+    m_addCommandBtn = new QPushButton("添加指令", toolbarWidget);
+    m_deleteCommandBtn = new QPushButton("删除指令", toolbarWidget);
+    auto *tipLabel = new QLabel("HEX示例: FF AA 01 00", toolbarWidget);
+    tipLabel->setObjectName("secondaryLabel");
+
+    toolbarLayout->addWidget(m_addCommandBtn);
+    toolbarLayout->addWidget(m_deleteCommandBtn);
+    toolbarLayout->addSpacing(8);
+    toolbarLayout->addWidget(tipLabel);
+    toolbarLayout->addStretch();
+
+    m_commandTable = new QTableWidget(m_commandConfigGroup);
+    m_commandTable->setColumnCount(3);
+    m_commandTable->setHorizontalHeaderLabels({"指令名称", "HEX指令", "说明"});
+    m_commandTable->setAlternatingRowColors(true);
+    m_commandTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_commandTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_commandTable->verticalHeader()->setVisible(false);
+    m_commandTable->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+    groupLayout->addWidget(toolbarWidget);
+    groupLayout->addWidget(m_commandTable, 1);
+
+    ui->fieldConfigLayout->addWidget(m_commandConfigGroup);
 }
 
 void CommandSettingsDialog::syncFromProtocolManager()
@@ -1248,15 +1871,15 @@ bool CommandSettingsDialog::parseFieldsFromCSV(QFile *file, QVector<FieldConfig>
 
         // 解析可选字段
         if (headerMap.contains("scale")) {
-            field.scale = values[headerMap["scale"]].trimmed().toDouble(&ok);
-            if (!ok) field.scale = 1.0;
+            const QString scaleText = values[headerMap["scale"]].trimmed();
+            field.scale = evaluateNumericExpressionOrDefault(scaleText, 1.0);
         } else {
             field.scale = 1.0;
         }
 
         if (headerMap.contains("offset")) {
-            field.offset = values[headerMap["offset"]].trimmed().toDouble(&ok);
-            if (!ok) field.offset = 0.0;
+            const QString offsetText = values[headerMap["offset"]].trimmed();
+            field.offset = evaluateNumericExpressionOrDefault(offsetText, 0.0);
         } else {
             field.offset = 0.0;
         }
@@ -1266,15 +1889,15 @@ bool CommandSettingsDialog::parseFieldsFromCSV(QFile *file, QVector<FieldConfig>
         }
 
         if (headerMap.contains("maximum")) {
-            field.maximum = values[headerMap["maximum"]].trimmed().toDouble(&ok);
-            if (!ok) field.maximum = 0.0;
+            const QString maxText = values[headerMap["maximum"]].trimmed();
+            field.maximum = evaluateNumericExpressionOrDefault(maxText, 0.0);
         } else {
             field.maximum = 0.0;
         }
 
         if (headerMap.contains("minimum")) {
-            field.minimum = values[headerMap["minimum"]].trimmed().toDouble(&ok);
-            if (!ok) field.minimum = 0.0;
+            const QString minText = values[headerMap["minimum"]].trimmed();
+            field.minimum = evaluateNumericExpressionOrDefault(minText, 0.0);
         } else {
             field.minimum = 0.0;
         }
@@ -1371,11 +1994,11 @@ bool CommandSettingsDialog::parseFieldsFromJSON(QFile *file, QVector<FieldConfig
         }
 
         // 解析可选字段
-        field.scale = fieldObj.value("scale").toDouble(1.0);
-        field.offset = fieldObj.value("offset").toDouble(0.0);
+        field.scale = jsonValueToNumberWithExpression(fieldObj.value("scale"), 1.0);
+        field.offset = jsonValueToNumberWithExpression(fieldObj.value("offset"), 0.0);
         field.unit = fieldObj.value("unit").toString();
-        field.maximum = fieldObj.value("maximum").toDouble(0.0);
-        field.minimum = fieldObj.value("minimum").toDouble(0.0);
+        field.maximum = jsonValueToNumberWithExpression(fieldObj.value("maximum"), 0.0);
+        field.minimum = jsonValueToNumberWithExpression(fieldObj.value("minimum"), 0.0);
         field.description = fieldObj.value("description").toString();
         field.tip = fieldObj.value("tip").toString();
 
@@ -1417,7 +2040,7 @@ void CommandSettingsDialog::showHelp()
         "<li><b>Sum：</b>累加和校验</li>"
         "<li><b>XOR：</b>异或校验</li>"
         "<li><b>CRC8：</b>8位循环冗余校验</li>"
-        "<li><b>CRC16：</b>16位CRC-MODBUS校验</li>"
+        "<li><b>CRC16：</b>16位CRC-XMODEM校验（多项式0x1021，初值0x0000）</li>"
         "<li><b>CRC32：</b>32位IEEE 802.3标准校验</li>"
         "</ul>"
 

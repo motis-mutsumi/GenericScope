@@ -90,7 +90,7 @@ public:
     /**
      * @brief 获取当前协议名称
      */
-    QString getCurrentProtocol() const { return m_currentProtocol; }
+    QString getCurrentProtocol() const;
 
     /**
      * @brief 获取当前解析器

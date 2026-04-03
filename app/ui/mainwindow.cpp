@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "config/config.h"
 #include "commandsettingsdialog.h"
+#include "commandsenddialog.h"
 #include "deviceconfigdialog.h"
 #include "common_component/log/logmanager.h"
 #include "common_component/plot/monitordatamanager.h"
@@ -18,6 +19,56 @@
 #include <QDir>
 #include <QSettings>
 #include <QSignalBlocker>
+
+namespace {
+QString checksumTypeToString(ChecksumType type)
+{
+    switch (type) {
+        case ChecksumType::None: return "None";
+        case ChecksumType::Sum: return "Sum";
+        case ChecksumType::XOR: return "XOR";
+        case ChecksumType::CRC8: return "CRC8";
+        case ChecksumType::CRC16_XMODEM: return "CRC16/XMODEM";
+        case ChecksumType::CRC32: return "CRC32";
+    }
+    return "Unknown";
+}
+
+QString checksumScopeToString(ChecksumScope scope)
+{
+    switch (scope) {
+        case ChecksumScope::FullFrame: return "FullFrame";
+        case ChecksumScope::AfterHeader: return "AfterHeader";
+        case ChecksumScope::DataOnly: return "DataOnly";
+        case ChecksumScope::Custom: return "Custom";
+    }
+    return "Unknown";
+}
+
+QString byteOrderToString(ByteOrder order)
+{
+    return (order == ByteOrder::LittleEndian) ? "LittleEndian" : "BigEndian";
+}
+
+void logParserConfig(const QString &context, const ProtocolConfig &cfg)
+{
+    LOG_INFO(QString("[%1] Parser config: header=%2, footer=%3, lengthPos=%4, "
+                     "checksumType=%5, checksumScope=%6, checksumStart=%7, checksumLength=%8, "
+                     "checksumPos=%9, byteOrder=%10, checksumByteOrder=%11, fields=%12")
+                 .arg(context)
+                 .arg(QString::fromLatin1(cfg.frameHeader.toHex(' ').toUpper()))
+                 .arg(QString::fromLatin1(cfg.frameFooter.toHex(' ').toUpper()))
+                 .arg(cfg.lengthPosition)
+                 .arg(checksumTypeToString(cfg.checksumType))
+                 .arg(checksumScopeToString(cfg.checksumScope))
+                 .arg(cfg.checksumStart)
+                 .arg(cfg.checksumLength)
+                 .arg(cfg.checksumPosition)
+                 .arg(byteOrderToString(cfg.byteOrder))
+                 .arg(byteOrderToString(cfg.checksumByteOrder))
+                 .arg(cfg.fields.size()));
+}
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -40,9 +91,12 @@ MainWindow::MainWindow(QWidget *parent)
     , m_startTime(0)
     , m_packetCount(0)
     , m_errorCount(0)
+    , m_lastUiPacketCount(0)
     , m_lastDataRateTime(0)
     , m_lastPacketCount(0)
     , m_lastErrorDialogTime(0)
+    , m_lastParseErrorLogTime(0)
+    , m_suppressedParseErrorCount(0)
     , m_isDarkMode(false)
 {
     ui->setupUi(this);
@@ -59,6 +113,27 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 预加载协议配置（修复：即使不打开协议配置对话框，也能添加图表）
     preloadProtocols();
+    {
+        // 启动阶段兜底：确保当前协议有效，避免误回退到legacy CSV解析
+        ProtocolManager *manager = ProtocolManager::instance();
+        if (manager) {
+            QString currentProtocol = manager->getCurrentProtocol();
+            if (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol)) {
+                const QStringList names = manager->getProtocolNames();
+                if (!names.isEmpty()) {
+                    currentProtocol = names.first();
+                    manager->setCurrentProtocol(currentProtocol);
+                    LOG_INFO(QString("Auto-selected protocol on startup: %1").arg(currentProtocol));
+                }
+            }
+            if (!currentProtocol.isEmpty() && manager->hasProtocol(currentProtocol)) {
+                const ProtocolConfig config = manager->getProtocol(currentProtocol);
+                m_protocolParser.reset(new ProtocolParser(config));
+                LOG_INFO(QString("Protocol parser initialized on startup: %1").arg(currentProtocol));
+                logParserConfig("startup", config);
+            }
+        }
+    }
 
     // 初始状态
     updateConnectionStatus(false);
@@ -159,6 +234,9 @@ void MainWindow::setupMenu()
     });
 
     // 创建右键菜单
+    m_settingsMenu->addSeparator();
+    m_settingsMenu->addAction("指令发送", this, &MainWindow::onCommandSendTriggered);
+
     m_contextMenu->addAction("Export Data", this, [this]() {
         QMessageBox::information(this, "Export", "Export data functionality");
     });
@@ -195,6 +273,15 @@ void MainWindow::preloadProtocols()
     const int protocolCount = manager->loadProtocolsFromSettings("GenericScope", "ProtocolConfig");
     if (protocolCount > 0) {
         qDebug() << QString("[MainWindow] 预加载了 %1 个协议配置").arg(protocolCount);
+        QString currentProtocol = manager->getCurrentProtocol();
+        if (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol)) {
+            const QStringList names = manager->getProtocolNames();
+            if (!names.isEmpty()) {
+                currentProtocol = names.first();
+                manager->setCurrentProtocol(currentProtocol);
+                LOG_INFO(QString("Auto-selected protocol on preload: %1").arg(currentProtocol));
+            }
+        }
     } else {
         qDebug() << "[MainWindow] 未找到已保存的协议配置";
     }
@@ -459,11 +546,15 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
             m_dataTimer->start(kDataTimerInterval);
             m_startTime = QDateTime::currentMSecsSinceEpoch();
             m_packetCount = 0;
+            m_lastUiPacketCount = 0;
             m_errorCount = 0;
             m_lastPacketCount = 0;
             m_lastDataRateTime = 0;
             m_lastErrorDialogTime = 0;
             m_lastErrorMessage.clear();
+            m_lastParseErrorLogTime = 0;
+            m_lastParseErrorMessage.clear();
+            m_suppressedParseErrorCount = 0;
         } else {
             ui->connectToggleButton->setChecked(false);
             QString errorMsg = isUdp
@@ -480,14 +571,24 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
         m_dataTimer->stop();
         m_startTime = 0;
         m_packetCount = 0;
+        m_lastUiPacketCount = 0;
         m_errorCount = 0;
         m_lastPacketCount = 0;
         m_lastDataRateTime = 0;
         m_lastErrorDialogTime = 0;
         m_lastErrorMessage.clear();
+        m_lastParseErrorLogTime = 0;
+        m_lastParseErrorMessage.clear();
+        m_suppressedParseErrorCount = 0;
 
         ui->connectToggleButton->setText("Connect");
         ui->transferTypeComboBox->setEnabled(true);
+        const bool isUdp = (ui->transferTypeComboBox->currentIndex() == 1);
+        ui->portComboBox->setEnabled(!isUdp);
+        ui->baudRateComboBox->setEnabled(!isUdp);
+        ui->udpRemoteIpEdit->setEnabled(isUdp);
+        ui->udpRemotePortSpinBox->setEnabled(isUdp);
+        ui->udpLocalPortSpinBox->setEnabled(isUdp);
         // 根据当前类型恢复对应控件
         on_transferTypeComboBox_currentIndexChanged(ui->transferTypeComboBox->currentIndex());
 
@@ -515,6 +616,12 @@ void MainWindow::on_transferTypeComboBox_currentIndexChanged(int index)
     ui->udpRemoteIpEdit->setVisible(isUdp);
     ui->udpRemotePortSpinBox->setVisible(isUdp);
     ui->udpLocalPortSpinBox->setVisible(isUdp);
+    const bool connected = ui->connectToggleButton->isChecked();
+    ui->portComboBox->setEnabled(!isUdp && !connected);
+    ui->baudRateComboBox->setEnabled(!isUdp && !connected);
+    ui->udpRemoteIpEdit->setEnabled(isUdp && !connected);
+    ui->udpRemotePortSpinBox->setEnabled(isUdp && !connected);
+    ui->udpLocalPortSpinBox->setEnabled(isUdp && !connected);
 }
 
 void MainWindow::on_recordLogCheckBox_toggled(bool checked)
@@ -586,6 +693,12 @@ void MainWindow::onCommandSettingsTriggered()
     }
 }
 
+void MainWindow::onCommandSendTriggered()
+{
+    CommandSendDialog dialog(m_deviceManager, this);
+    dialog.exec();
+}
+
 void MainWindow::onProtocolChanged(const QString &name)
 {
     LOG_INFO(QString("Protocol changed to: %1").arg(name));
@@ -604,12 +717,17 @@ void MainWindow::onProtocolChanged(const QString &name)
         ProtocolConfig config = ProtocolManager::instance()->getProtocol(name);
         m_protocolParser.reset(new ProtocolParser(config));
         LOG_INFO(QString("Protocol parser created for: %1").arg(name));
+        logParserConfig("protocol-changed", config);
     } else {
         m_protocolParser.reset();
         LOG_WARNING(QString("Protocol %1 not found, parser not created").arg(name));
     }
 
     statusBar()->showMessage(QString("已切换到协议: %1").arg(name), 3000);
+    m_rxBuffer.clear();  // 切协议后清空缓冲，避免旧协议残留字节导致误解析
+    m_lastParseErrorLogTime = 0;
+    m_lastParseErrorMessage.clear();
+    m_suppressedParseErrorCount = 0;
 
     // 清空监控面板图表（协议变了，字段可能不匹配）
     if (m_monitorPanel) {
@@ -661,9 +779,17 @@ void MainWindow::onDeviceError(const QString &error)
 
 void MainWindow::onUpdateTimer()
 {
-    if (m_monitorPanel) {
-        m_monitorPanel->update();
+    if (!m_monitorPanel) {
+        return;
     }
+
+    // 性能优化：仅在收到新数据包时刷新图表区域，避免空转重绘导致卡顿
+    if (m_packetCount == m_lastUiPacketCount) {
+        return;
+    }
+
+    m_monitorPanel->update();
+    m_lastUiPacketCount = m_packetCount;
 }
 
 void MainWindow::onDataUpdateTimer()
@@ -691,6 +817,10 @@ void MainWindow::updateConnectionStatus(bool connected)
         statusBar()->showMessage("Device Disconnected");
         m_updateTimer->stop();
         updateIMUStatus("Disconnected", 0, "None");
+        m_rxBuffer.clear();  // 断开连接时清空缓冲
+        m_lastParseErrorLogTime = 0;
+        m_lastParseErrorMessage.clear();
+        m_suppressedParseErrorCount = 0;
     }
 }
 
@@ -698,12 +828,32 @@ void MainWindow::processData(const QByteArray &data)
 {
     // ========== 使用ProtocolParser动态解析 ==========
     if (!m_protocolParser) {
+        ProtocolManager *manager = ProtocolManager::instance();
+        QString currentProtocol = manager ? manager->getCurrentProtocol() : QString();
+        if (manager && (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol))) {
+            const QStringList names = manager->getProtocolNames();
+            if (!names.isEmpty()) {
+                currentProtocol = names.first();
+                manager->setCurrentProtocol(currentProtocol);
+                LOG_INFO(QString("Auto-recovered current protocol: %1").arg(currentProtocol));
+            }
+        }
+        if (manager && !currentProtocol.isEmpty() && manager->hasProtocol(currentProtocol)) {
+            ProtocolConfig config = manager->getProtocol(currentProtocol);
+            m_protocolParser.reset(new ProtocolParser(config));
+            LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
+            logParserConfig("auto-create", config);
+        }
+    }
+
+    if (!m_protocolParser) {
         // 如果没有解析器，尝试创建（兼容旧行为）
         QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
         if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
             ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
             m_protocolParser.reset(new ProtocolParser(config));
             LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
+            logParserConfig("auto-create-fallback", config);
         } else {
             // 回退到硬编码解析（兼容性）
             processDataLegacy(data);
@@ -711,59 +861,147 @@ void MainWindow::processData(const QByteArray &data)
         }
     }
 
-    // 使用ProtocolParser解析
-    ParseResult result = m_protocolParser->parse(data);
-
-    if (!result.success) {
-        LOG_ERROR(QString("Protocol parse failed: %1").arg(result.errorMsg));
-        m_errorCount++;
-        updateIMUStatus("Error", 0, result.errorMsg);
-        return;
+    // 增量缓冲：解决串口分包/粘包
+    if (!data.isEmpty()) {
+        m_rxBuffer.append(data);
     }
 
-    // 转换为double映射并分发给MonitorDataManager
-    QMap<QString, double> fieldValues;
+    static constexpr int kMaxRxBufferBytes = 64 * 1024;
+    if (m_rxBuffer.size() > kMaxRxBufferBytes) {
+        m_rxBuffer = m_rxBuffer.right(kMaxRxBufferBytes / 2);
+        LOG_WARNING("RX buffer too large, trimmed to prevent memory growth");
+    }
 
-    for (auto it = result.fieldValues.begin(); it != result.fieldValues.end(); ++it) {
-        const QString &fieldName = it.key();
-        QVariant value = it.value();
+    while (!m_rxBuffer.isEmpty()) {
+        ParseResult result = m_protocolParser->parse(m_rxBuffer);
 
-        // 转换为double
-        bool ok = false;
-        double doubleValue = value.toDouble(&ok);
-        if (ok) {
-            fieldValues[fieldName] = doubleValue;
+        if (!result.success) {
+            if (result.errorMsg == "Incomplete frame") {
+                // 数据还没收全，等待下一包
+                break;
+            }
 
-            // 更新数据表格（从协议获取单位）
-            QString unit = getFieldUnit(fieldName);
-            updateDataTable(fieldName, doubleValue, unit);
-        } else {
-            LOG_WARNING(QString("Field %1 cannot be converted to double: %2")
-                       .arg(fieldName).arg(value.toString()));
+            if (result.errorMsg == "Frame header not found") {
+                // 保留帧头长度-1个字节，防止截断帧头
+                int keepBytes = 0;
+                const ProtocolConfig &cfg = m_protocolParser->config();
+                if (!cfg.frameHeader.isEmpty()) {
+                    keepBytes = qMax(0, cfg.frameHeader.size() - 1);
+                }
+                if (m_rxBuffer.size() > keepBytes) {
+                    m_rxBuffer = m_rxBuffer.right(keepBytes);
+                }
+                break;
+            }
+
+            // 其它错误：丢弃1字节继续搜帧（重同步时可能出现大量可恢复错误）
+            const bool isChecksumMismatch = (result.errorMsg == "Checksum verification failed");
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            const int throttleMs = isChecksumMismatch ? kChecksumResyncWarnIntervalMs
+                                                      : kParseErrorLogThrottleMs;
+            const bool shouldThrottle = ((now - m_lastParseErrorLogTime) < throttleMs);
+            const QByteArray checksumInspectData = !result.rawData.isEmpty()
+                ? result.rawData
+                : m_rxBuffer.left(qMin(m_rxBuffer.size(), 64));
+            const QString checksumInspectHex = QString::fromLatin1(
+                checksumInspectData.toHex(' ').toUpper());
+
+            if (shouldThrottle) {
+                ++m_suppressedParseErrorCount;
+            } else {
+                if (isChecksumMismatch) {
+                    if (m_suppressedParseErrorCount > 0) {
+                        LOG_WARNING(QString("Protocol parse issue: %1 (resyncing stream, suppressed %2 logs). "
+                                            "checksum_data[%3B]=%4")
+                                        .arg(result.errorMsg)
+                                        .arg(m_suppressedParseErrorCount)
+                                        .arg(checksumInspectData.size())
+                                        .arg(checksumInspectHex));
+                    } else {
+                        LOG_WARNING(QString("Protocol parse issue: %1 (resyncing stream). "
+                                            "checksum_data[%2B]=%3")
+                                        .arg(result.errorMsg)
+                                        .arg(checksumInspectData.size())
+                                        .arg(checksumInspectHex));
+                    }
+                } else {
+                    if (m_suppressedParseErrorCount > 0) {
+                        LOG_ERROR(QString("Protocol parse failed: %1 (suppressed %2 logs)")
+                                      .arg(result.errorMsg)
+                                      .arg(m_suppressedParseErrorCount));
+                    } else {
+                        LOG_ERROR(QString("Protocol parse failed: %1").arg(result.errorMsg));
+                    }
+                }
+
+                m_lastParseErrorLogTime = now;
+                m_lastParseErrorMessage = result.errorMsg;
+                m_suppressedParseErrorCount = 0;
+            }
+
+            m_errorCount++;
+            if (!isChecksumMismatch) {
+                updateIMUStatus("Error", 0, result.errorMsg);
+            }
+
+            if (isChecksumMismatch) {
+                // 重同步优化：CRC失败时尽快跳到下一个帧头，避免逐字节扫描导致大量无效告警
+                const QByteArray header = m_protocolParser->config().frameHeader;
+                if (!header.isEmpty()) {
+                    const int nextHeaderPos = m_rxBuffer.indexOf(header, 1);
+                    if (nextHeaderPos > 0) {
+                        m_rxBuffer.remove(0, nextHeaderPos);
+                        continue;
+                    }
+                }
+            }
+
+            m_rxBuffer.remove(0, 1);
+            continue;
         }
-    }
 
-    // 分发数据给监控面板
-    if (!fieldValues.isEmpty()) {
-        MonitorDataManager::instance()->onProtocolDataParsed(fieldValues);
-    }
-
-    // 更新3D视图（如果有Roll/Pitch/Yaw字段）
-    if (fieldValues.contains("Roll") && fieldValues.contains("Pitch") && fieldValues.contains("Yaw")) {
-        updateAttitudeDisplay(fieldValues["Roll"], fieldValues["Pitch"], fieldValues["Yaw"]);
-    }
-
-    // 录制数据
-    if (m_dataRecorder->isRecording()) {
-        QVariantMap dataMap;
-        dataMap["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-        for (auto it = fieldValues.begin(); it != fieldValues.end(); ++it) {
-            dataMap[it.key()] = it.value();
+        int consumed = result.consumedBytes;
+        if (consumed <= 0 || consumed > m_rxBuffer.size()) {
+            consumed = 1;
         }
-        m_dataRecorder->recordData(dataMap);
-    }
+        m_rxBuffer.remove(0, consumed);
 
-    m_packetCount++;
+        QMap<QString, double> fieldValues;
+        for (auto it = result.fieldValues.begin(); it != result.fieldValues.end(); ++it) {
+            const QString &fieldName = it.key();
+            const QVariant value = it.value();
+
+            bool ok = false;
+            const double doubleValue = value.toDouble(&ok);
+            if (ok) {
+                fieldValues[fieldName] = doubleValue;
+                const QString unit = getFieldUnit(fieldName);
+                updateDataTable(fieldName, doubleValue, unit);
+            } else {
+                LOG_WARNING(QString("Field %1 cannot be converted to double: %2")
+                           .arg(fieldName).arg(value.toString()));
+            }
+        }
+
+        if (!fieldValues.isEmpty()) {
+            MonitorDataManager::instance()->onProtocolDataParsed(fieldValues);
+        }
+
+        if (fieldValues.contains("Roll") && fieldValues.contains("Pitch") && fieldValues.contains("Yaw")) {
+            updateAttitudeDisplay(fieldValues["Roll"], fieldValues["Pitch"], fieldValues["Yaw"]);
+        }
+
+        if (m_dataRecorder->isRecording()) {
+            QVariantMap dataMap;
+            dataMap["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+            for (auto it = fieldValues.begin(); it != fieldValues.end(); ++it) {
+                dataMap[it.key()] = it.value();
+            }
+            m_dataRecorder->recordData(dataMap);
+        }
+
+        m_packetCount++;
+    }
 }
 
 // 辅助函数：从协议配置获取字段单位

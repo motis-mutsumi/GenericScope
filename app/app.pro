@@ -12,6 +12,7 @@ LIBS += -lalgorithm -lutil -lprotocol -ltransfer -lplot -llog -lrecord -lcore_pl
 HEADERS += \
     ui/mainwindow.h \
     ui/commandsettingsdialog.h \
+    ui/commandsenddialog.h \
     ui/deviceconfigdialog.h \
     ui/newprotocoldialog.h \
     ui/protocoltypeconverter.h \
@@ -27,6 +28,7 @@ SOURCES += \
     main.cpp \
     ui/mainwindow.cpp \
     ui/commandsettingsdialog.cpp \
+    ui/commandsenddialog_v2.cpp \
     ui/deviceconfigdialog.cpp \
     ui/newprotocoldialog.cpp \
     ui/protocoltypeconverter.cpp \
