@@ -85,6 +85,12 @@ private:
     void setupChart();
     void setupLogWidget();
     void refreshAvailablePorts();
+    void populateDefaultDataTableRows();
+    void resetParseErrorState();
+    void resetRuntimeState(qint64 startTimeMs);
+    void flushPendingDataTableUpdates();
+    bool createProtocolParser(const QString &protocolName, const QString &logContext);
+    bool ensureProtocolParser(const QString &logContext);
     void updateThemeToggleButton(bool darkMode);
     QString generateBuiltInStyle(bool darkMode);
     QString getFieldUnit(const QString &fieldName);  // 从协议获取字段单位
@@ -139,6 +145,8 @@ private:
 
     // 配置
     bool m_isDarkMode;
+    QMap<QString, QVariant> m_pendingTableValues;
+    QMap<QString, QString> m_pendingTableUnits;
 
     // 数据表格行索引映射
     QMap<QString, int> m_tableRowMap;
@@ -155,6 +163,8 @@ private:
     static constexpr int kErrorDialogThrottleMs = 3000;
     static constexpr int kParseErrorLogThrottleMs = 3000;
     static constexpr int kChecksumResyncWarnIntervalMs = 15000;
+    static constexpr int kUiRefreshIntervalMs = 50;      // UI refresh rate ~20 Hz
+    static constexpr int kStatusRefreshIntervalMs = 50;  // Status refresh rate ~20 Hz
 };
 
 #endif // MAINWINDOW_H

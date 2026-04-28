@@ -1,20 +1,54 @@
-# 编译输出
-Bin/x64/Release/*.exe
-Bin/x64/Release/*.dll
-Bin/x64/Release/*.lib
+# Build outputs
+Bin/
+build*/
+debug/
+release/
+x64/
+x86/
 
-# 编译中间文件
-temp/
-
-# 运行日志
-Bin/x64/Release/logs/
-
-# Qt构建文件
+# Qt/qmake generated files
 *.user
+*.user.*
+*.pro.user*
 Makefile
 Makefile.*
-*.pro.user*
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.moc
+.qmake.stash
 
-# 测试输出
-Bin/test/
-temp/test_*/
+# C/C++ build artifacts
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.a
+*.so
+*.dylib
+
+# Runtime and test output
+temp/
+logs/
+*.log
+*.tmp
+*.cache
+
+# Local IDE/editor settings
+.vscode/
+.idea/
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Local tool settings
+.claude/settings.local.json
+
+# OS files
+Thumbs.db
+Desktop.ini

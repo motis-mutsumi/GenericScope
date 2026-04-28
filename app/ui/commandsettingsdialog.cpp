@@ -23,6 +23,22 @@
 #include <QHash>
 #include <cmath>
 
+#define PERSIST_CURRENT_AND_SYNC()                     \
+    do {                                               \
+        if (!m_currentProtocolName.isEmpty()) {        \
+            m_protocols[m_currentProtocolName] = getCurrentConfig(); \
+        }                                              \
+        saveProtocols();                               \
+        syncToProtocolManager();                       \
+    } while (0)
+
+#define SAVE_CURRENT_PROTOCOL_DRAFT()                                  \
+    do {                                                               \
+        if (!m_currentProtocolName.isEmpty() && m_protocols.contains(m_currentProtocolName)) { \
+            m_protocols[m_currentProtocolName] = getCurrentConfig();   \
+        }                                                              \
+    } while (0)
+
 namespace {
 // 协议字段公式缓存：key=协议名，value=每行字段的(scaleExpr, offsetExpr)
 static QHash<QString, QVector<QPair<QString, QString>>> g_protocolFieldExprCache;
@@ -461,9 +477,7 @@ void CommandSettingsDialog::onTabChanged(int index)
     }
 
     // 切换标签前先保存当前页编辑内容，避免未应用内容丢失
-    if (!m_currentProtocolName.isEmpty() && m_protocols.contains(m_currentProtocolName)) {
-        m_protocols[m_currentProtocolName] = getCurrentConfig();
-    }
+    SAVE_CURRENT_PROTOCOL_DRAFT();
 
     if (m_protocols.contains(name)) {
         m_currentProtocolName = name;
@@ -852,12 +866,7 @@ void CommandSettingsDialog::onGenerateProtocol()
         return;
     }
 
-    // 保存当前配置
-    m_protocols[m_currentProtocolName] = getCurrentConfig();
-    saveProtocols();
-
-    // 同步到ProtocolManager
-    syncToProtocolManager();
+    PERSIST_CURRENT_AND_SYNC();
 
     QMessageBox::information(this, "成功",
         QString("协议 \"%1\" 已生成并保存！").arg(m_currentProtocolName));
@@ -886,13 +895,7 @@ void CommandSettingsDialog::onTestProtocol()
 
 void CommandSettingsDialog::onApply()
 {
-    if (!m_currentProtocolName.isEmpty()) {
-        m_protocols[m_currentProtocolName] = getCurrentConfig();
-    }
-    saveProtocols();
-
-    // 同步到ProtocolManager，这会触发currentProtocolChanged信号
-    syncToProtocolManager();
+    PERSIST_CURRENT_AND_SYNC();
 
     m_isModified = false;
     QMessageBox::information(this, "成功", "设置已应用！");
@@ -900,13 +903,7 @@ void CommandSettingsDialog::onApply()
 
 void CommandSettingsDialog::onOk()
 {
-    if (!m_currentProtocolName.isEmpty()) {
-        m_protocols[m_currentProtocolName] = getCurrentConfig();
-    }
-    saveProtocols();
-
-    // 同步到ProtocolManager，这会触发currentProtocolChanged信号
-    syncToProtocolManager();
+    PERSIST_CURRENT_AND_SYNC();
 
     accept();
 }
@@ -1699,7 +1696,6 @@ void CommandSettingsDialog::syncToProtocolManager()
     }
 
     for (auto it = m_protocols.begin(); it != m_protocols.end(); ++it) {
-        const QString &name = it.key();
         const ProtocolConfig &uiConfig = it.value();
 
         // 转换为protocol模块的类型
@@ -2097,3 +2093,6 @@ void CommandSettingsDialog::showHelp()
 
     helpBox.exec();
 }
+
+#undef PERSIST_CURRENT_AND_SYNC
+#undef SAVE_CURRENT_PROTOCOL_DRAFT

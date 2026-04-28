@@ -113,26 +113,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 预加载协议配置（修复：即使不打开协议配置对话框，也能添加图表）
     preloadProtocols();
-    {
-        // 启动阶段兜底：确保当前协议有效，避免误回退到legacy CSV解析
-        ProtocolManager *manager = ProtocolManager::instance();
-        if (manager) {
-            QString currentProtocol = manager->getCurrentProtocol();
-            if (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol)) {
-                const QStringList names = manager->getProtocolNames();
-                if (!names.isEmpty()) {
-                    currentProtocol = names.first();
-                    manager->setCurrentProtocol(currentProtocol);
-                    LOG_INFO(QString("Auto-selected protocol on startup: %1").arg(currentProtocol));
-                }
-            }
-            if (!currentProtocol.isEmpty() && manager->hasProtocol(currentProtocol)) {
-                const ProtocolConfig config = manager->getProtocol(currentProtocol);
-                m_protocolParser.reset(new ProtocolParser(config));
-                LOG_INFO(QString("Protocol parser initialized on startup: %1").arg(currentProtocol));
-                logParserConfig("startup", config);
-            }
-        }
+    if (ensureProtocolParser("startup")) {
+        LOG_INFO("Protocol parser initialized on startup");
     }
 
     // 初始状态
@@ -355,6 +337,25 @@ void MainWindow::setupDataTable()
     rebuildDataTableFromProtocol();
 }
 
+void MainWindow::populateDefaultDataTableRows()
+{
+    static const QStringList kDefaultMessages = {
+        QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
+        QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
+        QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
+        QStringLiteral("Temperature")
+    };
+
+    for (const QString &message : kDefaultMessages) {
+        const int row = ui->dataTableWidget->rowCount();
+        ui->dataTableWidget->insertRow(row);
+        ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(message));
+        ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
+        ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
+        m_tableRowMap[message] = row;
+    }
+}
+
 void MainWindow::rebuildDataTableFromProtocol()
 {
     LOG_INFO("Starting rebuildDataTableFromProtocol");
@@ -364,40 +365,27 @@ void MainWindow::rebuildDataTableFromProtocol()
     m_tableRowMap.clear();
 
     // 添加空指针检查
-    if (!ProtocolManager::instance()) {
+    ProtocolManager *manager = ProtocolManager::instance();
+    if (!manager) {
         LOG_INFO("ProtocolManager not initialized, using default IMU fields");
         // 使用默认字段
-        QStringList messages = {QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
-                               QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
-                               QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
-                               QStringLiteral("Temperature")};
-
-        for (int i = 0; i < messages.size(); ++i) {
-            int row = ui->dataTableWidget->rowCount();
-            ui->dataTableWidget->insertRow(row);
-
-            ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(messages[i]));
-            ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
-            ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
-
-            m_tableRowMap[messages[i]] = row;
-        }
+        populateDefaultDataTableRows();
         return;
     }
 
     // 获取当前协议
-    QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
+    const QString currentProtocol = manager->getCurrentProtocol();
 
-    if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
+    if (!currentProtocol.isEmpty() && manager->hasProtocol(currentProtocol)) {
         // 从协议配置获取字段
-        ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
+        const ProtocolConfig config = manager->getProtocol(currentProtocol);
 
         LOG_INFO(QString("Rebuilding data table from protocol: %1 with %2 fields")
                      .arg(currentProtocol)
                      .arg(config.fields.size()));
 
         for (const FieldConfig &field : config.fields) {
-            int row = ui->dataTableWidget->rowCount();
+            const int row = ui->dataTableWidget->rowCount();
             ui->dataTableWidget->insertRow(row);
 
             // 字段名称
@@ -421,21 +409,7 @@ void MainWindow::rebuildDataTableFromProtocol()
         // 使用默认字段（IMU数据）
         LOG_INFO("No protocol configured, using default IMU fields");
 
-        QStringList messages = {QStringLiteral("AccX"), QStringLiteral("AccY"), QStringLiteral("AccZ"),
-                               QStringLiteral("GyroX"), QStringLiteral("GyroY"), QStringLiteral("GyroZ"),
-                               QStringLiteral("MagX"), QStringLiteral("MagY"), QStringLiteral("MagZ"),
-                               QStringLiteral("Temperature")};
-
-        for (int i = 0; i < messages.size(); ++i) {
-            int row = ui->dataTableWidget->rowCount();
-            ui->dataTableWidget->insertRow(row);
-
-            ui->dataTableWidget->setItem(row, kDataTableMessageColumn, new QTableWidgetItem(messages[i]));
-            ui->dataTableWidget->setItem(row, kDataTableValueColumn, new QTableWidgetItem(QStringLiteral("-")));
-            ui->dataTableWidget->setItem(row, kDataTableUnitColumn, new QTableWidgetItem(QString()));
-
-            m_tableRowMap[messages[i]] = row;
-        }
+        populateDefaultDataTableRows();
     }
 }
 
@@ -543,18 +517,8 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
             }
 
             m_deviceManager->startPolling();
-            m_dataTimer->start(kDataTimerInterval);
-            m_startTime = QDateTime::currentMSecsSinceEpoch();
-            m_packetCount = 0;
-            m_lastUiPacketCount = 0;
-            m_errorCount = 0;
-            m_lastPacketCount = 0;
-            m_lastDataRateTime = 0;
-            m_lastErrorDialogTime = 0;
-            m_lastErrorMessage.clear();
-            m_lastParseErrorLogTime = 0;
-            m_lastParseErrorMessage.clear();
-            m_suppressedParseErrorCount = 0;
+            m_dataTimer->start(kStatusRefreshIntervalMs);
+            resetRuntimeState(QDateTime::currentMSecsSinceEpoch());
         } else {
             ui->connectToggleButton->setChecked(false);
             QString errorMsg = isUdp
@@ -569,17 +533,7 @@ void MainWindow::on_connectToggleButton_toggled(bool checked)
         m_deviceManager->stopPolling();
         m_deviceManager->disconnectDevice();
         m_dataTimer->stop();
-        m_startTime = 0;
-        m_packetCount = 0;
-        m_lastUiPacketCount = 0;
-        m_errorCount = 0;
-        m_lastPacketCount = 0;
-        m_lastDataRateTime = 0;
-        m_lastErrorDialogTime = 0;
-        m_lastErrorMessage.clear();
-        m_lastParseErrorLogTime = 0;
-        m_lastParseErrorMessage.clear();
-        m_suppressedParseErrorCount = 0;
+        resetRuntimeState(0);
 
         ui->connectToggleButton->setText("Connect");
         ui->transferTypeComboBox->setEnabled(true);
@@ -713,21 +667,14 @@ void MainWindow::onProtocolChanged(const QString &name)
     rebuildDataTableFromProtocol();
 
     // 重建协议解析器
-    if (ProtocolManager::instance() && ProtocolManager::instance()->hasProtocol(name)) {
-        ProtocolConfig config = ProtocolManager::instance()->getProtocol(name);
-        m_protocolParser.reset(new ProtocolParser(config));
-        LOG_INFO(QString("Protocol parser created for: %1").arg(name));
-        logParserConfig("protocol-changed", config);
-    } else {
+    if (!createProtocolParser(name, "protocol-changed")) {
         m_protocolParser.reset();
         LOG_WARNING(QString("Protocol %1 not found, parser not created").arg(name));
     }
 
     statusBar()->showMessage(QString("已切换到协议: %1").arg(name), 3000);
     m_rxBuffer.clear();  // 切协议后清空缓冲，避免旧协议残留字节导致误解析
-    m_lastParseErrorLogTime = 0;
-    m_lastParseErrorMessage.clear();
-    m_suppressedParseErrorCount = 0;
+    resetParseErrorState();
 
     // 清空监控面板图表（协议变了，字段可能不匹配）
     if (m_monitorPanel) {
@@ -779,16 +726,16 @@ void MainWindow::onDeviceError(const QString &error)
 
 void MainWindow::onUpdateTimer()
 {
-    if (!m_monitorPanel) {
-        return;
-    }
+    flushPendingDataTableUpdates();
 
     // 性能优化：仅在收到新数据包时刷新图表区域，避免空转重绘导致卡顿
     if (m_packetCount == m_lastUiPacketCount) {
         return;
     }
 
-    m_monitorPanel->update();
+    if (m_monitorPanel) {
+        m_monitorPanel->update();
+    }
     m_lastUiPacketCount = m_packetCount;
 }
 
@@ -808,57 +755,121 @@ void MainWindow::onDataUpdateTimer()
     m_lastPacketCount = m_packetCount;
 }
 
+void MainWindow::resetParseErrorState()
+{
+    m_lastParseErrorLogTime = 0;
+    m_lastParseErrorMessage.clear();
+    m_suppressedParseErrorCount = 0;
+}
+
+void MainWindow::resetRuntimeState(qint64 startTimeMs)
+{
+    m_startTime = startTimeMs;
+    m_packetCount = 0;
+    m_lastUiPacketCount = 0;
+    m_errorCount = 0;
+    m_lastPacketCount = 0;
+    m_lastDataRateTime = 0;
+    m_lastErrorDialogTime = 0;
+    m_lastErrorMessage.clear();
+    m_pendingTableValues.clear();
+    m_pendingTableUnits.clear();
+    resetParseErrorState();
+}
+
+void MainWindow::flushPendingDataTableUpdates()
+{
+    if (m_pendingTableValues.isEmpty()) {
+        return;
+    }
+
+    for (auto it = m_pendingTableValues.begin(); it != m_pendingTableValues.end(); ++it) {
+        const QString &message = it.key();
+        if (!m_tableRowMap.contains(message)) {
+            continue;
+        }
+
+        const int row = m_tableRowMap.value(message);
+        if (QTableWidgetItem *valueItem = ui->dataTableWidget->item(row, kDataTableValueColumn)) {
+            valueItem->setText(QString::number(it.value().toDouble(), 'f', 3));
+        }
+
+        const QString unit = m_pendingTableUnits.value(message);
+        if (!unit.isEmpty()) {
+            if (QTableWidgetItem *unitItem = ui->dataTableWidget->item(row, kDataTableUnitColumn)) {
+                if (unitItem->text().isEmpty()) {
+                    unitItem->setText(unit);
+                }
+            }
+        }
+    }
+
+    m_pendingTableValues.clear();
+    m_pendingTableUnits.clear();
+}
+
+bool MainWindow::createProtocolParser(const QString &protocolName, const QString &logContext)
+{
+    ProtocolManager *manager = ProtocolManager::instance();
+    if (!manager || protocolName.isEmpty() || !manager->hasProtocol(protocolName)) {
+        return false;
+    }
+
+    const ProtocolConfig config = manager->getProtocol(protocolName);
+    m_protocolParser.reset(new ProtocolParser(config));
+    LOG_INFO(QString("Protocol parser created for: %1").arg(protocolName));
+    logParserConfig(logContext, config);
+    return true;
+}
+
+bool MainWindow::ensureProtocolParser(const QString &logContext)
+{
+    if (m_protocolParser) {
+        return true;
+    }
+
+    ProtocolManager *manager = ProtocolManager::instance();
+    if (!manager) {
+        return false;
+    }
+
+    QString currentProtocol = manager->getCurrentProtocol();
+    if (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol)) {
+        const QStringList names = manager->getProtocolNames();
+        if (!names.isEmpty()) {
+            currentProtocol = names.first();
+            manager->setCurrentProtocol(currentProtocol);
+            LOG_INFO(QString("Auto-recovered current protocol: %1").arg(currentProtocol));
+        }
+    }
+
+    return createProtocolParser(currentProtocol, logContext);
+}
+
 void MainWindow::updateConnectionStatus(bool connected)
 {
     if (connected) {
         statusBar()->showMessage("Device Connected");
-        m_updateTimer->start(kUpdateTimerInterval);
+        m_updateTimer->start(kUiRefreshIntervalMs);
     } else {
         statusBar()->showMessage("Device Disconnected");
         m_updateTimer->stop();
         updateIMUStatus("Disconnected", 0, "None");
+        m_pendingTableValues.clear();
+        m_pendingTableUnits.clear();
+        resetParseErrorState();
         m_rxBuffer.clear();  // 断开连接时清空缓冲
-        m_lastParseErrorLogTime = 0;
-        m_lastParseErrorMessage.clear();
-        m_suppressedParseErrorCount = 0;
+        resetParseErrorState();
     }
 }
 
 void MainWindow::processData(const QByteArray &data)
 {
     // ========== 使用ProtocolParser动态解析 ==========
-    if (!m_protocolParser) {
-        ProtocolManager *manager = ProtocolManager::instance();
-        QString currentProtocol = manager ? manager->getCurrentProtocol() : QString();
-        if (manager && (currentProtocol.isEmpty() || !manager->hasProtocol(currentProtocol))) {
-            const QStringList names = manager->getProtocolNames();
-            if (!names.isEmpty()) {
-                currentProtocol = names.first();
-                manager->setCurrentProtocol(currentProtocol);
-                LOG_INFO(QString("Auto-recovered current protocol: %1").arg(currentProtocol));
-            }
-        }
-        if (manager && !currentProtocol.isEmpty() && manager->hasProtocol(currentProtocol)) {
-            ProtocolConfig config = manager->getProtocol(currentProtocol);
-            m_protocolParser.reset(new ProtocolParser(config));
-            LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
-            logParserConfig("auto-create", config);
-        }
-    }
-
-    if (!m_protocolParser) {
-        // 如果没有解析器，尝试创建（兼容旧行为）
-        QString currentProtocol = ProtocolManager::instance()->getCurrentProtocol();
-        if (!currentProtocol.isEmpty() && ProtocolManager::instance()->hasProtocol(currentProtocol)) {
-            ProtocolConfig config = ProtocolManager::instance()->getProtocol(currentProtocol);
-            m_protocolParser.reset(new ProtocolParser(config));
-            LOG_INFO(QString("Auto-created protocol parser for: %1").arg(currentProtocol));
-            logParserConfig("auto-create-fallback", config);
-        } else {
-            // 回退到硬编码解析（兼容性）
-            processDataLegacy(data);
-            return;
-        }
+    if (!ensureProtocolParser("auto-create")) {
+        // No protocol parser available, fallback to legacy parsing for compatibility.
+        processDataLegacy(data);
+        return;
     }
 
     // 增量缓冲：解决串口分包/粘包
@@ -877,6 +888,7 @@ void MainWindow::processData(const QByteArray &data)
 
         if (!result.success) {
             if (result.errorMsg == "Incomplete frame") {
+                break;
                 // 数据还没收全，等待下一包
                 break;
             }
@@ -900,30 +912,27 @@ void MainWindow::processData(const QByteArray &data)
             const int throttleMs = isChecksumMismatch ? kChecksumResyncWarnIntervalMs
                                                       : kParseErrorLogThrottleMs;
             const bool shouldThrottle = ((now - m_lastParseErrorLogTime) < throttleMs);
-            const QByteArray checksumInspectData = !result.rawData.isEmpty()
+            const QByteArray inspectData = !result.rawData.isEmpty()
                 ? result.rawData
                 : m_rxBuffer.left(qMin(m_rxBuffer.size(), 64));
-            const QString checksumInspectHex = QString::fromLatin1(
-                checksumInspectData.toHex(' ').toUpper());
+            const QString inspectHex = QString::fromLatin1(inspectData.toHex(' ').toUpper());
 
             if (shouldThrottle) {
                 ++m_suppressedParseErrorCount;
             } else {
                 if (isChecksumMismatch) {
-                    if (m_suppressedParseErrorCount > 0) {
-                        LOG_WARNING(QString("Protocol parse issue: %1 (resyncing stream, suppressed %2 logs). "
-                                            "checksum_data[%3B]=%4")
-                                        .arg(result.errorMsg)
-                                        .arg(m_suppressedParseErrorCount)
-                                        .arg(checksumInspectData.size())
-                                        .arg(checksumInspectHex));
-                    } else {
-                        LOG_WARNING(QString("Protocol parse issue: %1 (resyncing stream). "
-                                            "checksum_data[%2B]=%3")
-                                        .arg(result.errorMsg)
-                                        .arg(checksumInspectData.size())
-                                        .arg(checksumInspectHex));
-                    }
+                    const bool hasSuppressed = (m_suppressedParseErrorCount > 0);
+                    const QString message = hasSuppressed
+                        ? QString("Protocol parse issue: %1 (resyncing stream, suppressed %2 logs). checksum_data[%3B]=%4")
+                              .arg(result.errorMsg)
+                              .arg(m_suppressedParseErrorCount)
+                              .arg(inspectData.size())
+                              .arg(inspectHex)
+                        : QString("Protocol parse issue: %1 (resyncing stream). checksum_data[%2B]=%3")
+                              .arg(result.errorMsg)
+                              .arg(inspectData.size())
+                              .arg(inspectHex);
+                    LOG_WARNING(message);
                 } else {
                     if (m_suppressedParseErrorCount > 0) {
                         LOG_ERROR(QString("Protocol parse failed: %1 (suppressed %2 logs)")
@@ -945,10 +954,11 @@ void MainWindow::processData(const QByteArray &data)
             }
 
             if (isChecksumMismatch) {
+                const QByteArray frameHeader = m_protocolParser->config().frameHeader;
                 // 重同步优化：CRC失败时尽快跳到下一个帧头，避免逐字节扫描导致大量无效告警
-                const QByteArray header = m_protocolParser->config().frameHeader;
-                if (!header.isEmpty()) {
-                    const int nextHeaderPos = m_rxBuffer.indexOf(header, 1);
+                // CRC mismatch: jump directly to the next header if possible.
+                if (!frameHeader.isEmpty()) {
+                    const int nextHeaderPos = m_rxBuffer.indexOf(frameHeader, 1);
                     if (nextHeaderPos > 0) {
                         m_rxBuffer.remove(0, nextHeaderPos);
                         continue;
@@ -1150,6 +1160,17 @@ void MainWindow::updateAttitudeDisplay(double roll, double pitch, double yaw)
 
 void MainWindow::updateDataTable(const QString &message, const QVariant &value, const QString &unit)
 {
+    if (!m_tableRowMap.contains(message)) {
+        return;
+    }
+
+    m_pendingTableValues[message] = value;
+    if (!unit.isEmpty()) {
+        m_pendingTableUnits[message] = unit;
+    }
+    return;
+#if 0
+
     if (m_tableRowMap.contains(message)) {
         int row = m_tableRowMap[message];
 
@@ -1162,6 +1183,7 @@ void MainWindow::updateDataTable(const QString &message, const QVariant &value, 
             ui->dataTableWidget->item(row, kDataTableUnitColumn)->setText(unit);
         }
     }
+#endif
 }
 
 void MainWindow::updateIMUStatus(const QString &status, double dataRate, const QString &error)

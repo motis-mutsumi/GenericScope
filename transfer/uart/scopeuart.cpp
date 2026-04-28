@@ -7,6 +7,26 @@
 
 using namespace std;
 
+namespace {
+void closeWinHandle(HANDLE &handle)
+{
+    if (handle != NULL && handle != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(handle);
+    }
+    handle = INVALID_HANDLE_VALUE;
+}
+
+void closeEventHandle(HANDLE &handle)
+{
+    if (handle != NULL)
+    {
+        CloseHandle(handle);
+    }
+    handle = NULL;
+}
+}
+
 ScopeUart::ScopeUart()
 {
 }
@@ -66,7 +86,7 @@ ScopeTransferStatus ScopeUart::open()
         return Ok;
     }
 
-    UartInfo info_data = getUartInfo();
+    const UartInfo info_data = getUartInfo();
 
     // Windows串口命名规则：COM10及以上需要使用 "\\\\.\\COMN" 格式
     std::string portName = info_data.port_name;
@@ -75,7 +95,7 @@ ScopeTransferStatus ScopeUart::open()
         portName = "\\\\.\\" + portName;
     }
 
-    if(info_data.async)
+    if (info_data.async)
     {
         m_hcom = CreateFileA(
                portName.c_str(),
@@ -110,10 +130,13 @@ ScopeTransferStatus ScopeUart::open()
     timeouts.ReadTotalTimeoutConstant = 5000;
     timeouts.WriteTotalTimeoutMultiplier = 0;
     timeouts.WriteTotalTimeoutConstant = 0;
-    SetCommTimeouts(m_hcom, &timeouts);
+    if (!SetCommTimeouts(m_hcom, &timeouts))
+    {
+        goto err;
+    }
 
     // 配置串口参数
-    DCB dcb;
+    DCB dcb = {0};
     if (!GetCommState(m_hcom, &dcb))
     {
         goto err;
@@ -128,7 +151,7 @@ ScopeTransferStatus ScopeUart::open()
         goto err;
     }
 
-    if(info_data.async)
+    if (info_data.async)
     {
         ZeroMemory(&m_ovWrite, sizeof(m_ovWrite));
         m_ovWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -141,21 +164,13 @@ ScopeTransferStatus ScopeUart::open()
         m_ovRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         if (m_ovRead.hEvent == NULL)
         {
-            CloseHandle(m_ovWrite.hEvent);
-            m_ovWrite.hEvent = NULL;
             goto err;
         }
 
         m_hthread = (HANDLE)_beginthreadex(NULL, 0, &comRecv, this, 0, NULL);
-        if(m_hthread != INVALID_HANDLE_VALUE)
+        if (m_hthread == NULL || m_hthread == INVALID_HANDLE_VALUE)
         {
-            m_open = true;
-            return Ok;
-        }
-        else
-        {
-            CloseHandle(m_hcom);
-            return Error;
+            goto err;
         }
 
     }
@@ -164,45 +179,31 @@ ScopeTransferStatus ScopeUart::open()
     return Ok;
 
 err:
-    CloseHandle(m_hcom);
+    closeEventHandle(m_ovWrite.hEvent);
+    closeEventHandle(m_ovRead.hEvent);
+    closeWinHandle(m_hthread);
+    closeWinHandle(m_hcom);
     return Error;
 }
 
 ScopeTransferStatus ScopeUart::close()
 {
-    if (m_open)
+    m_open = false;
+
+    if (m_hcom != INVALID_HANDLE_VALUE)
     {
-        m_open = false;
-
-        if (m_hcom != INVALID_HANDLE_VALUE)
-        {
-            PurgeComm(m_hcom, PURGE_TXCLEAR | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_RXABORT);
-        }
-
-        if (NULL != m_hthread)
-        {
-            WaitForSingleObject(m_hthread, 3000);//等待线程结束
-            CloseHandle(m_hthread);
-            m_hthread = NULL;
-        }
-
-        if (NULL != m_ovWrite.hEvent)
-        {
-            CloseHandle(m_ovWrite.hEvent);
-            m_ovWrite.hEvent = NULL;
-        }
-        if (NULL != m_ovRead.hEvent)
-        {
-            CloseHandle(m_ovRead.hEvent);
-            m_ovRead.hEvent = NULL;
-        }
-
-        if (m_hcom != INVALID_HANDLE_VALUE)
-        {
-            CloseHandle(m_hcom);
-            m_hcom = INVALID_HANDLE_VALUE;
-        }
+        PurgeComm(m_hcom, PURGE_TXCLEAR | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_RXABORT);
     }
+
+    if (m_hthread != NULL && m_hthread != INVALID_HANDLE_VALUE)
+    {
+            WaitForSingleObject(m_hthread, 3000);//等待线程结束
+    }
+    closeWinHandle(m_hthread);
+
+    closeEventHandle(m_ovWrite.hEvent);
+    closeEventHandle(m_ovRead.hEvent);
+    closeWinHandle(m_hcom);
 
     return Ok;
 }
@@ -216,22 +217,21 @@ ScopeTransferStatus ScopeUart::readData(uint8_t *rx_data, uint32_t read_len, uin
 
     if (write_len > 0 && cmd)
     {
-        ScopeTransferStatus ret = writeData(cmd, write_len);
-        if (ret != Ok)
+        const ScopeTransferStatus writeStatus = writeData(cmd, write_len);
+        if (writeStatus != Ok)
         {
-            return ret;
+            return writeStatus;
         }
     }
 
-    ScopeTransferStatus status = Ok;
-    UartInfo info_data = getUartInfo();
+    const UartInfo info_data = getUartInfo();
 
     if (!info_data.async)
     {
         return readData(rx_data, read_len);
     }
 
-    return status;
+    return Ok;
 }
 
 ScopeTransferStatus ScopeUart::writeData(uint8_t *data, uint32_t write_len)
@@ -244,9 +244,9 @@ ScopeTransferStatus ScopeUart::writeData(uint8_t *data, uint32_t write_len)
     DWORD dw_send = 0;
     PurgeComm(m_hcom, PURGE_TXCLEAR | PURGE_TXABORT);
 
-    if(getUartInfo().async)
+    const bool isAsync = getUartInfo().async;
+    if (isAsync)
     {
-        DWORD dw_send = 0;
         DWORD dw_error;
 
         if (ClearCommError(m_hcom, &dw_error, NULL))
@@ -288,8 +288,8 @@ ScopeTransferStatus ScopeUart::writeData(uint8_t *data, uint32_t write_len)
         uint32_t total_send = 0;
         while (total_send < write_len)
         {
-            bool flag = WriteFile(m_hcom, data + total_send, write_len - total_send, &dw_send, NULL);
-            if (!flag)
+            const bool writeOk = WriteFile(m_hcom, data + total_send, write_len - total_send, &dw_send, NULL);
+            if (!writeOk)
             {
                 cout << "send failed!" << endl;
                 Sleep(10);
@@ -339,6 +339,11 @@ ScopeTransferStatus ScopeUart::readData(uint8_t *data, uint32_t len)
 
 unsigned int __stdcall comRecv(void* param)
 {
+    if (param == nullptr)
+    {
+        return 0;
+    }
+
     // 新实现：底层串口线程仅做“原始字节透传”，不再按旧0x55协议预拆包。
     // 之前的预拆包会破坏当前协议（例如帧头 AA 55 01 01 22 00）并导致上层CRC大量误报。
     {
@@ -440,8 +445,8 @@ unsigned int __stdcall comRecv(void* param)
                         continueParsing = false;
 
                         std::lock_guard<std::mutex> lock(objRaw->m_bufferMutex);
-                        const int MAX_BUFFER_SIZE = 4096;
-                        if (objRaw->m_receiveBuffer.size() > MAX_BUFFER_SIZE)
+                        static constexpr int kMaxBufferSize = 4096;
+                        if (objRaw->m_receiveBuffer.size() > kMaxBufferSize)
                         {
                             qWarning() << "ScopeUart: Buffer overflow ("
                                        << objRaw->m_receiveBuffer.size() << " bytes), clearing old data";
@@ -454,211 +459,4 @@ unsigned int __stdcall comRecv(void* param)
 
         return 0;
     }
-
-    #if 0
-    static const uint32_t buffer_size = 100;
-    static const unsigned char frame_header = {0x55};
-    static const unsigned char length_padding = 1;
-    static const uint16_t header_len = 1;
-    static const uint16_t crc_len  = 2;
-    ScopeUart *obj = static_cast<ScopeUart*>(param);
-
-    auto& ov_read = obj->m_ovRead;
-    auto& h_com = obj->m_hcom;
-
-    DWORD dw_error;
-
-    char *p_read_buf = (char *)malloc(buffer_size);
-    char *p_next = p_read_buf;
-
-    if (p_read_buf == NULL)
-    {
-        obj->m_open = FALSE;
-        return 0;
-    }
-
-    // 数据接收
-    DWORD dw_want_read = 1;
-    DWORD dw_read = 0;
-
-    if (ClearCommError(h_com, &dw_error, NULL))
-    {
-        PurgeComm(h_com, PURGE_TXCLEAR | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_RXABORT);
-    }
-
-    enum ReadType{
-        Header,
-        Length,
-        Body
-    };
-
-    ReadType read_type = Header;
-
-    auto reset_param = [&](){
-        p_next = p_read_buf;
-        dw_want_read = 1;
-        read_type = Header;
-    };
-
-    memset(p_read_buf, 0, buffer_size);
-    while (obj->m_open)
-    {
-        bool success_ = true;
-
-        if (!ReadFile(h_com, p_next, dw_want_read, &dw_read, &ov_read))
-        {
-            if ((dw_error = GetLastError()) == ERROR_IO_PENDING)
-            {
-                while(!GetOverlappedResult(h_com, &ov_read, &dw_read, FALSE))
-                {
-                    std::this_thread::sleep_for(std::chrono::microseconds(50));
-                    if(!obj->m_open)
-                    {
-                        success_ = false;
-                        free(p_read_buf);
-                        return 0;
-                    }
-
-                    if ((dw_error = GetLastError()) == ERROR_IO_INCOMPLETE)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        success_ = false;
-                        ClearCommError(h_com, &dw_error, NULL);
-                        break;
-                    }
-                }
-
-            }
-            else
-            {
-                success_ = false;
-                ClearCommError(h_com, &dw_error, NULL);
-                break;
-            }
-        }
-
-        if(!obj->m_open)
-        {
-            success_ = false;
-            free(p_read_buf);
-            return 0;
-        }
-
-        if(success_ && dw_read == dw_want_read)
-        {
-            if (dw_read == 1 && read_type == Header)
-            {
-                if (((p_next[0] == (char)frame_header)))
-                {
-                    dw_want_read = length_padding;
-                    p_next = p_read_buf + 1;
-                    read_type = Length;
-                }
-            }
-            else if (read_type == Length)
-            {
-                dw_want_read = *p_next + crc_len;//check length
-                p_next = p_read_buf + length_padding + header_len;
-                read_type = Body;
-                if(dw_want_read > buffer_size - header_len - crc_len)
-                {
-                    reset_param();
-                }
-                //size range limit
-            }
-            else if (read_type == Body)
-            {
-                // 原始回调（保持向后兼容）
-                if (obj->m_xferCallBackFunction != NULL)
-                {
-                    obj->m_xferCallBackFunction((uint8_t *)p_read_buf, dw_read + length_padding + header_len);
-                }
-
-                // 协议解析（新增）
-                if (obj->m_parser && obj->m_parseResultCallback)
-                {
-                    // 将数据添加到缓冲区
-                    QByteArray newData((const char*)p_read_buf, dw_read + length_padding + header_len);
-
-                    {
-                        std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
-                        obj->m_receiveBuffer.append(newData);
-                    }
-
-                    // 尝试解析完整帧
-                    bool continueParsing = true;
-                    while (continueParsing)
-                    {
-                        QByteArray dataToParse;
-                        {
-                            std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
-                            dataToParse = obj->m_receiveBuffer;
-                        }
-
-                        if (dataToParse.isEmpty()) {
-                            break;
-                        }
-
-                        // 解析数据
-                        ParseResult result = obj->m_parser->parse(dataToParse);
-
-                        if (result.success)
-                        {
-                            // 解析成功，发送结果
-                            obj->m_parseResultCallback(result);
-
-                            // 从缓冲区移除已解析的数据
-                            {
-                                std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
-                                if (result.consumedBytes > 0 && result.consumedBytes <= obj->m_receiveBuffer.size())
-                                {
-                                    obj->m_receiveBuffer.remove(0, result.consumedBytes);
-                                }
-                                else
-                                {
-                                    // 异常情况：consumedBytes不合理，清空缓冲区
-                                    qWarning() << "ScopeUart: Invalid consumedBytes:" << result.consumedBytes
-                                               << ", buffer size:" << obj->m_receiveBuffer.size();
-                                    obj->m_receiveBuffer.clear();
-                                    continueParsing = false;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // 解析失败 - 数据可能不完整，继续等待
-                            continueParsing = false;
-
-                            // 缓冲区溢出保护
-                            {
-                                std::lock_guard<std::mutex> lock(obj->m_bufferMutex);
-                                const int MAX_BUFFER_SIZE = 4096;
-                                if (obj->m_receiveBuffer.size() > MAX_BUFFER_SIZE)
-                                {
-                                    qWarning() << "ScopeUart: Buffer overflow ("
-                                               << obj->m_receiveBuffer.size() << " bytes), clearing old data";
-                                    obj->m_receiveBuffer.clear();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                reset_param();
-            }
-        }
-        else
-        {
-            reset_param();
-        }
-    }
-
-    free(p_read_buf);
-
-    //obj->m_shutDownDeviceCallBackFunction();
-    return 0;
-    #endif
 }
