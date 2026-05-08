@@ -57,6 +57,20 @@ public:
         int axisCount;           // 转台轴数
     };
 
+    // 烘箱配置
+    struct Oven {
+        QString port;            // 烘箱串口号
+        int baudRate;            // 烘箱波特率
+        int dataBits;            // 数据位
+        int stopBits;            // 停止位
+        QString parity;          // 校验位
+        int timeout;             // 超时时间
+        int deviceId;            // 设备编号
+        double targetTemperature; // 目标温度
+        int pollingIntervalMs;   // 轮询间隔
+        bool autoQueryStatus;    // 自动查询状态
+    };
+
     // 算法参数
     struct AlgorithmParams {
         int filterType;         // 滤波器类型
@@ -96,6 +110,7 @@ public:
     App app;
     Device device;
     Turntable turntable;
+    Oven oven;
     AlgorithmParams algorithmParams;
     Display display;
 

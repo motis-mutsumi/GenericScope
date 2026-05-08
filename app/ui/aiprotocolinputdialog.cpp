@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QApplication>
 #include <QButtonGroup>
+#include <QStyle>
 
 AIProtocolInputDialog::AIProtocolInputDialog(QWidget *parent)
     : QDialog(parent)
@@ -15,6 +16,7 @@ AIProtocolInputDialog::AIProtocolInputDialog(QWidget *parent)
     , m_generationSuccess(false)
 {
     ui->setupUi(this);
+    setObjectName(QStringLiteral("aiProtocolInputDialog"));
 
     // 注册自定义类型，用于信号槽传递
     qRegisterMetaType<CommandSettingsDialog::ProtocolConfig>("CommandSettingsDialog::ProtocolConfig");
@@ -78,67 +80,11 @@ void AIProtocolInputDialog::setupConnections()
 
 void AIProtocolInputDialog::applyStyles()
 {
-    QString buttonStyle = R"(
-        QPushButton {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            background-color: #2980b9;
-        }
-        QPushButton:pressed {
-            background-color: #1c5985;
-        }
-        QPushButton:disabled {
-            background-color: #bdc3c7;
-        }
-    )";
-
-    ui->generateBtn->setStyleSheet(buttonStyle);
-
-    QString secondaryButtonStyle = R"(
-        QPushButton {
-            background-color: #95a5a6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            font-size: 13px;
-        }
-        QPushButton:hover {
-            background-color: #7f8c8d;
-        }
-        QPushButton:pressed {
-            background-color: #6c7a7b;
-        }
-    )";
-
-    ui->pasteExampleBtn->setStyleSheet(secondaryButtonStyle);
-    ui->clearBtn->setStyleSheet(secondaryButtonStyle);
-    ui->cancelBtn->setStyleSheet(secondaryButtonStyle);
-
-    QString groupBoxStyle = R"(
-        QGroupBox {
-            font-weight: bold;
-            font-size: 13px;
-            border: 2px solid #bdc3c7;
-            border-radius: 6px;
-            margin-top: 10px;
-            padding-top: 10px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 15px;
-            padding: 0 5px;
-        }
-    )";
-
-    setStyleSheet(groupBoxStyle);
+    ui->generateBtn->setObjectName(QStringLiteral("successButton"));
+    ui->pasteExampleBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->clearBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->cancelBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
 }
 
 void AIProtocolInputDialog::setApiKey(const QString &apiKey)
@@ -278,7 +224,9 @@ void AIProtocolInputDialog::onGenerationComplete(
     setUIEnabled(true);
     ui->progressBar->setVisible(false);
     ui->statusLabel->setText("✓ 协议配置生成成功！");
-    ui->statusLabel->setStyleSheet("color: #27ae60; font-weight: bold; font-size: 14px;");
+    ui->statusLabel->setObjectName(QStringLiteral("successLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
 
     qDebug() << "显示成功对话框...";
     // 显示成功提示
@@ -301,7 +249,9 @@ void AIProtocolInputDialog::onGenerationFailed(const QString &errorMessage)
     setUIEnabled(true);
     ui->progressBar->setVisible(false);
     ui->statusLabel->setText("✗ 生成失败");
-    ui->statusLabel->setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 14px;");
+    ui->statusLabel->setObjectName(QStringLiteral("errorLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
 
     // 显示错误信息
     QMessageBox::critical(this, "生成失败",
@@ -316,7 +266,9 @@ void AIProtocolInputDialog::onGenerationFailed(const QString &errorMessage)
 void AIProtocolInputDialog::onProgressUpdate(const QString &message)
 {
     ui->statusLabel->setText(message);
-    ui->statusLabel->setStyleSheet("color: #3498db; font-weight: bold;");
+    ui->statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
     QApplication::processEvents();  // 更新UI
 }
 

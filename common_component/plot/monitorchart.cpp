@@ -61,6 +61,7 @@ void MonitorChart::setupUI()
     setupPlot();
 
     // 设置边框
+    setObjectName("monitorChart");
     setFrameShape(QFrame::StyledPanel);
     setFrameShadow(QFrame::Raised);
 

@@ -53,6 +53,7 @@ private slots:
     void onCommandSettingsTriggered();
     void onCommandSendTriggered();
     void onTurntableControlTriggered();
+    void onOvenControlTriggered();
 
     // 协议管理
     void onProtocolChanged(const QString &name);

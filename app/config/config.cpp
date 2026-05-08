@@ -61,6 +61,17 @@ void Config::loadDefaults()
     turntable.udpLocalPort = 10099;
     turntable.axisCount = 1;
 
+    oven.port = "COM1";
+    oven.baudRate = 19200;
+    oven.dataBits = 8;
+    oven.stopBits = 1;
+    oven.parity = "None";
+    oven.timeout = 1000;
+    oven.deviceId = 1;
+    oven.targetTemperature = 25.0;
+    oven.pollingIntervalMs = 1000;
+    oven.autoQueryStatus = true;
+
     // 算法参数
     algorithmParams.filterType = 0;
     algorithmParams.filterKernelSize = 3;
@@ -111,6 +122,19 @@ void Config::load()
     turntable.udpRemotePort = m_settings->value("udpRemotePort", turntable.udpRemotePort).toInt();
     turntable.udpLocalPort = m_settings->value("udpLocalPort", turntable.udpLocalPort).toInt();
     turntable.axisCount = m_settings->value("axisCount", turntable.axisCount).toInt();
+    m_settings->endGroup();
+
+    m_settings->beginGroup("Oven");
+    oven.port = m_settings->value("port", oven.port).toString();
+    oven.baudRate = m_settings->value("baudRate", oven.baudRate).toInt();
+    oven.dataBits = m_settings->value("dataBits", oven.dataBits).toInt();
+    oven.stopBits = m_settings->value("stopBits", oven.stopBits).toInt();
+    oven.parity = m_settings->value("parity", oven.parity).toString();
+    oven.timeout = m_settings->value("timeout", oven.timeout).toInt();
+    oven.deviceId = m_settings->value("deviceId", oven.deviceId).toInt();
+    oven.targetTemperature = m_settings->value("targetTemperature", oven.targetTemperature).toDouble();
+    oven.pollingIntervalMs = m_settings->value("pollingIntervalMs", oven.pollingIntervalMs).toInt();
+    oven.autoQueryStatus = m_settings->value("autoQueryStatus", oven.autoQueryStatus).toBool();
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");
@@ -171,6 +195,19 @@ void Config::save()
     m_settings->setValue("udpRemotePort", turntable.udpRemotePort);
     m_settings->setValue("udpLocalPort", turntable.udpLocalPort);
     m_settings->setValue("axisCount", turntable.axisCount);
+    m_settings->endGroup();
+
+    m_settings->beginGroup("Oven");
+    m_settings->setValue("port", oven.port);
+    m_settings->setValue("baudRate", oven.baudRate);
+    m_settings->setValue("dataBits", oven.dataBits);
+    m_settings->setValue("stopBits", oven.stopBits);
+    m_settings->setValue("parity", oven.parity);
+    m_settings->setValue("timeout", oven.timeout);
+    m_settings->setValue("deviceId", oven.deviceId);
+    m_settings->setValue("targetTemperature", oven.targetTemperature);
+    m_settings->setValue("pollingIntervalMs", oven.pollingIntervalMs);
+    m_settings->setValue("autoQueryStatus", oven.autoQueryStatus);
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");

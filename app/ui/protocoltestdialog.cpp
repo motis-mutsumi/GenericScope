@@ -5,6 +5,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QStyle>
 #include <QDebug>
 #include <QHash>
 
@@ -19,6 +20,7 @@ ProtocolTestDialog::ProtocolTestDialog(const CommandSettingsDialog::ProtocolConf
     , m_config(config)
 {
     ui->setupUi(this);
+    setObjectName(QStringLiteral("protocolTestDialog"));
 
     // 将 UI 配置转换为 protocol 模块配置
     ::ProtocolConfig protocolConfig = ProtocolTypeConverter::uiToProtocolConfig(config);
@@ -40,6 +42,8 @@ void ProtocolTestDialog::setupUI()
 {
     // UI已经通过.ui文件创建，这里只需要设置窗口标题
     setWindowTitle("协议测试 - " + m_config.name);
+    ui->statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
+    ui->checksumLabel->setObjectName(QStringLiteral("secondaryLabel"));
 
     // 增加“原始数据(HEX)”列，方便核对每个字段的字节切片
     ui->resultTable->setColumnCount(5);
@@ -73,7 +77,9 @@ void ProtocolTestDialog::onParseData()
     QByteArray data = hexStringToByteArray(hexStr, &ok);
     if (!ok) {
         ui->statusLabel->setText("错误：16进制格式不正确！");
-        ui->statusLabel->setStyleSheet("QLabel { color: red; font-weight: bold; }");
+        ui->statusLabel->setObjectName(QStringLiteral("errorLabel"));
+        ui->statusLabel->style()->unpolish(ui->statusLabel);
+        ui->statusLabel->style()->polish(ui->statusLabel);
         return;
     }
 
@@ -83,7 +89,9 @@ void ProtocolTestDialog::onParseData()
     }
 
     ui->statusLabel->setText(QString("正在解析 %1 字节数据...").arg(data.size()));
-    ui->statusLabel->setStyleSheet("QLabel { color: blue; font-weight: bold; }");
+    ui->statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
 
     // 使用 ProtocolParser 解析数据
     ParseResult result = m_parser->parse(data);
@@ -95,14 +103,16 @@ void ProtocolTestDialog::onParseData()
     // 显示校验码验证结果
     if (m_config.checksumType == CommandSettingsDialog::ChecksumType::None) {
         ui->checksumLabel->setText("校验码：无校验");
-        ui->checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #e0e0e0; }");
+        ui->checksumLabel->setObjectName(QStringLiteral("secondaryLabel"));
     } else if (result.success) {
         ui->checksumLabel->setText("校验码：验证通过 ✓");
-        ui->checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ccffcc; }");
+        ui->checksumLabel->setObjectName(QStringLiteral("successLabel"));
     } else if (result.errorMsg.contains("Checksum")) {
         ui->checksumLabel->setText("校验码：验证失败 ✗");
-        ui->checksumLabel->setStyleSheet("QLabel { padding: 5px; background-color: #ffcccc; }");
+        ui->checksumLabel->setObjectName(QStringLiteral("errorLabel"));
     }
+    ui->checksumLabel->style()->unpolish(ui->checksumLabel);
+    ui->checksumLabel->style()->polish(ui->checksumLabel);
 
     // 显示解析结果
     displayParseResult(result.success, result.errorMsg, result.fieldValues);
@@ -113,9 +123,13 @@ void ProtocolTestDialog::onClearData()
     ui->inputEdit->clear();
     ui->resultTable->setRowCount(0);
     ui->statusLabel->setText("就绪");
-    ui->statusLabel->setStyleSheet("QLabel { color: blue; font-weight: bold; }");
+    ui->statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
     ui->checksumLabel->setText("校验码：未验证");
-    ui->checksumLabel->setStyleSheet("QLabel { padding: 5px; }");
+    ui->checksumLabel->setObjectName(QStringLiteral("secondaryLabel"));
+    ui->checksumLabel->style()->unpolish(ui->checksumLabel);
+    ui->checksumLabel->style()->polish(ui->checksumLabel);
     ui->rawDataLabel->setText("原始数据：");
     g_lastParsedFrameByDialog.remove(this);
 }
@@ -127,14 +141,18 @@ void ProtocolTestDialog::onLoadSample()
     const QByteArray header = hexStringToByteArray(m_config.frameHeader, &ok);
     if (!ok) {
         ui->statusLabel->setText("示例生成失败：帧头格式无效");
-        ui->statusLabel->setStyleSheet("QLabel { color: red; font-weight: bold; }");
+        ui->statusLabel->setObjectName(QStringLiteral("errorLabel"));
+        ui->statusLabel->style()->unpolish(ui->statusLabel);
+        ui->statusLabel->style()->polish(ui->statusLabel);
         return;
     }
 
     const QByteArray footer = hexStringToByteArray(m_config.frameFooter, &ok);
     if (!ok) {
         ui->statusLabel->setText("示例生成失败：帧尾格式无效");
-        ui->statusLabel->setStyleSheet("QLabel { color: red; font-weight: bold; }");
+        ui->statusLabel->setObjectName(QStringLiteral("errorLabel"));
+        ui->statusLabel->style()->unpolish(ui->statusLabel);
+        ui->statusLabel->style()->polish(ui->statusLabel);
         return;
     }
 
@@ -270,7 +288,9 @@ void ProtocolTestDialog::onLoadSample()
 
     ui->inputEdit->setPlainText(byteArrayToHexString(frame));
     ui->statusLabel->setText("已加载示例数据（含长度与校验）");
-    ui->statusLabel->setStyleSheet("QLabel { color: green; font-weight: bold; }");
+    ui->statusLabel->setObjectName(QStringLiteral("successLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
 }
 
 void ProtocolTestDialog::displayParseResult(bool success, const QString &errorMsg,
@@ -278,12 +298,16 @@ void ProtocolTestDialog::displayParseResult(bool success, const QString &errorMs
 {
     if (!success) {
         ui->statusLabel->setText("解析失败：" + errorMsg);
-        ui->statusLabel->setStyleSheet("QLabel { color: red; font-weight: bold; }");
+        ui->statusLabel->setObjectName(QStringLiteral("errorLabel"));
+        ui->statusLabel->style()->unpolish(ui->statusLabel);
+        ui->statusLabel->style()->polish(ui->statusLabel);
         return;
     }
 
     ui->statusLabel->setText(QString("解析成功！共解析 %1 个字段").arg(fieldValues.size()));
-    ui->statusLabel->setStyleSheet("QLabel { color: green; font-weight: bold; }");
+    ui->statusLabel->setObjectName(QStringLiteral("successLabel"));
+    ui->statusLabel->style()->unpolish(ui->statusLabel);
+    ui->statusLabel->style()->polish(ui->statusLabel);
 
     // 填充结果表格
     ui->resultTable->setRowCount(fieldValues.size());

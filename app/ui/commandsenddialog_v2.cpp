@@ -47,6 +47,7 @@ CommandSendDialog::CommandSendDialog(DeviceManager *deviceManager, QWidget *pare
 
 void CommandSendDialog::setupUI()
 {
+    setObjectName(QStringLiteral("commandSendDialog"));
     setWindowTitle(QStringLiteral("指令发送"));
     setModal(true);
     resize(700, 380);
@@ -86,13 +87,18 @@ void CommandSendDialog::setupUI()
     formLayout->addRow(QStringLiteral("最近发送："), m_historyCombo);
 
     m_statusLabel = new QLabel(QStringLiteral("请先选择指令。"), this);
+    m_statusLabel->setObjectName(QStringLiteral("secondaryLabel"));
 
     auto *buttonRow = new QHBoxLayout();
     m_refreshBtn = new QPushButton(QStringLiteral("刷新列表"), this);
+    m_refreshBtn->setObjectName(QStringLiteral("secondaryButton"));
     m_toggleFavoriteBtn = new QPushButton(QStringLiteral("加入常用"), this);
+    m_toggleFavoriteBtn->setObjectName(QStringLiteral("secondaryButton"));
     m_resendBtn = new QPushButton(QStringLiteral("重发历史"), this);
+    m_resendBtn->setObjectName(QStringLiteral("secondaryButton"));
     m_sendBtn = new QPushButton(QStringLiteral("发送"), this);
     auto *closeBtn = new QPushButton(QStringLiteral("关闭"), this);
+    closeBtn->setObjectName(QStringLiteral("secondaryButton"));
 
     m_sendBtn->setDefault(true);
 
@@ -115,6 +121,7 @@ void CommandSendDialog::setupUI()
     m_rxLogEdit->setPlaceholderText(QStringLiteral("设备返回数据将显示在这里（时间 + HEX）"));
 
     m_clearRxLogBtn = new QPushButton(QStringLiteral("清空返回"), rxGroup);
+    m_clearRxLogBtn->setObjectName(QStringLiteral("secondaryButton"));
     auto *rxButtonRow = new QHBoxLayout();
     rxButtonRow->addStretch();
     rxButtonRow->addWidget(m_clearRxLogBtn);

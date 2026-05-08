@@ -5,6 +5,7 @@
 #include "commandsenddialog.h"
 #include "deviceconfigdialog.h"
 #include "turntablecontroldialog.h"
+#include "ovencontroldialog.h"
 #include "common_component/log/logmanager.h"
 #include "common_component/plot/monitordatamanager.h"
 #include "protocol/protocolmanager.h"
@@ -226,6 +227,7 @@ void MainWindow::setupMenu()
     m_settingsMenu->addSeparator();
     m_settingsMenu->addAction("指令发送", this, &MainWindow::onCommandSendTriggered);
     m_settingsMenu->addAction("转台控制", this, &MainWindow::onTurntableControlTriggered);
+    m_settingsMenu->addAction("烘箱控制", this, &MainWindow::onOvenControlTriggered);
 
     m_contextMenu->addAction("Export Data", this, [this]() {
         QMessageBox::information(this, "Export", "Export data functionality");
@@ -304,8 +306,8 @@ void MainWindow::loadStyleSheet(bool darkMode)
 
     if (m_3dView) {
         m_3dView->setBackgroundColor(darkMode
-            ? QColor(0x1E, 0x1E, 0x1E)
-            : QColor(0xF5, 0xF5, 0xF5));
+            ? QColor(0x25, 0x2C, 0x34)
+            : QColor(0xF7, 0xF9, 0xFB));
     }
 
     if (m_monitorPanel) {
@@ -664,6 +666,12 @@ void MainWindow::onCommandSendTriggered()
 void MainWindow::onTurntableControlTriggered()
 {
     TurntableControlDialog dialog(this);
+    dialog.exec();
+}
+
+void MainWindow::onOvenControlTriggered()
+{
+    OvenControlDialog dialog(this);
     dialog.exec();
 }
 

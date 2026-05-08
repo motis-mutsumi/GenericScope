@@ -29,9 +29,9 @@ IMU3DView::IMU3DView(QWidget *parent)
     QPalette pal = QApplication::palette();
     QColor bgColor = pal.color(QPalette::Window);
     if (bgColor.lightness() < 128) {
-        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0x1e1e1e))); // 深色主题
+        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0x252c34)));
     } else {
-        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0xF5F5F5))); // 浅色主题
+        m_view->defaultFrameGraph()->setClearColor(QColor(QRgb(0xF7F9FB)));
     }
 
     // 将Qt3D窗口嵌入到QWidget容器

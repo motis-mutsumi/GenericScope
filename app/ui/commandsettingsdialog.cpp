@@ -262,6 +262,7 @@ CommandSettingsDialog::CommandSettingsDialog(QWidget *parent)
     , m_isModified(false)
 {
     ui->setupUi(this);
+    setObjectName(QStringLiteral("commandSettingsDialog"));
 
     // 移除标题栏的帮助按钮（？），改用底部的"帮助"按钮
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
@@ -311,6 +312,24 @@ void CommandSettingsDialog::setupUI()
     if (cancelBtn) cancelBtn->setText("取消");
     if (applyBtn) applyBtn->setText("应用");
     if (helpBtn) helpBtn->setText("帮助");
+
+    ui->newProtocolBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->deleteProtocolBtn->setObjectName(QStringLiteral("dangerButton"));
+    ui->addFieldBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->deleteFieldBtn->setObjectName(QStringLiteral("dangerButton"));
+    ui->moveUpBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->moveDownBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->importFieldBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->importProtocolBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->exportProtocolBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->generateProtocolBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->testProtocolBtn->setObjectName(QStringLiteral("secondaryButton"));
+
+    ui->fieldTable->setAlternatingRowColors(true);
+
+    if (cancelBtn) cancelBtn->setObjectName(QStringLiteral("secondaryButton"));
+    if (applyBtn) applyBtn->setObjectName(QStringLiteral("secondaryButton"));
+    if (helpBtn) helpBtn->setObjectName(QStringLiteral("secondaryButton"));
 }
 
 void CommandSettingsDialog::setupTableColumns()
@@ -1736,7 +1755,9 @@ void CommandSettingsDialog::setupCommandTableUI()
     toolbarLayout->setSpacing(8);
 
     m_addCommandBtn = new QPushButton("添加指令", toolbarWidget);
+    m_addCommandBtn->setObjectName(QStringLiteral("secondaryButton"));
     m_deleteCommandBtn = new QPushButton("删除指令", toolbarWidget);
+    m_deleteCommandBtn->setObjectName(QStringLiteral("dangerButton"));
     auto *tipLabel = new QLabel("HEX示例: FF AA 01 00", toolbarWidget);
     tipLabel->setObjectName("secondaryLabel");
 

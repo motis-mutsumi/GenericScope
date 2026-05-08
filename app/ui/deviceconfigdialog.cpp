@@ -4,6 +4,7 @@
 #include "config/config.h"
 #include "common_component/log/logmanager.h"
 #include <QMessageBox>
+#include <QStyle>
 
 DeviceConfigDialog::DeviceConfigDialog(DeviceManager *deviceManager, QWidget *parent)
     : QDialog(parent)
@@ -12,6 +13,7 @@ DeviceConfigDialog::DeviceConfigDialog(DeviceManager *deviceManager, QWidget *pa
     , m_isConnected(false)
 {
     ui->setupUi(this);
+    setObjectName(QStringLiteral("deviceConfigDialog"));
 
     // 移除标题栏的帮助按钮（问号）
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
@@ -25,6 +27,15 @@ DeviceConfigDialog::DeviceConfigDialog(DeviceManager *deviceManager, QWidget *pa
     ui->accelFilterCombo->setCurrentText("20");
 
     setupConnections();
+
+    ui->refreshBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->calibrateBtn->setObjectName(QStringLiteral("successButton"));
+    ui->resetBtn->setObjectName(QStringLiteral("dangerButton"));
+    ui->restartBtn->setObjectName(QStringLiteral("dangerButton"));
+    ui->writeOutputBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->writeGyroBtn->setObjectName(QStringLiteral("secondaryButton"));
+    ui->writeAccelBtn->setObjectName(QStringLiteral("secondaryButton"));
+
     updateConnectionStatus(false);
 }
 
@@ -205,27 +216,18 @@ void DeviceConfigDialog::updateConnectionStatus(bool connected)
     Config *cfg = Config::instance();
     QString typeStr = (cfg->device.type.toUpper() == "UDP") ? "UDP" : "串口";
 
+    ui->connectionStatusLabel->setObjectName(QStringLiteral("connectionStatusLabel"));
+    ui->connectionStatusLabel->setProperty("state", connected ? "connected" : "error");
+
     if (connected) {
         ui->connectionStatusLabel->setText(typeStr + " 已连接");
-        ui->connectionStatusLabel->setStyleSheet(
-            "QLabel { "
-            "   color: #27AE60; "
-            "   font-weight: bold; "
-            "   font-size: 14px; "
-            "   padding: 5px 10px; "
-            "}"
-        );
     } else {
         ui->connectionStatusLabel->setText(typeStr + " 未连接");
-        ui->connectionStatusLabel->setStyleSheet(
-            "QLabel { "
-            "   color: #E74C3C; "
-            "   font-weight: bold; "
-            "   font-size: 14px; "
-            "   padding: 5px 10px; "
-            "}"
-        );
     }
+
+    ui->connectionStatusLabel->style()->unpolish(ui->connectionStatusLabel);
+    ui->connectionStatusLabel->style()->polish(ui->connectionStatusLabel);
+    ui->connectionStatusLabel->update();
 
     // 根据连接状态启用/禁用控件
     ui->refreshBtn->setEnabled(connected);

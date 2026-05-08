@@ -21,10 +21,12 @@ HEADERS += \
     ui/protocolcligenerator.h \
     ui/aiprotocolinputdialog.h \
     ui/turntablecontroldialog.h \
+    ui/ovencontroldialog.h \
     ui/imu3dview.h \
     config/config.h \
     device/devicemanager.h \
-    device/turntableconnection.h
+    device/turntableconnection.h \
+    device/ovenconnection.h
 
 SOURCES += \
     main.cpp \
@@ -39,10 +41,12 @@ SOURCES += \
     ui/protocolcligenerator.cpp \
     ui/aiprotocolinputdialog.cpp \
     ui/turntablecontroldialog.cpp \
+    ui/ovencontroldialog.cpp \
     ui/imu3dview.cpp \
     config/config.cpp \
     device/devicemanager.cpp \
-    device/turntableconnection.cpp
+    device/turntableconnection.cpp \
+    device/ovenconnection.cpp
 
 FORMS += \
     ui/mainwindow.ui \

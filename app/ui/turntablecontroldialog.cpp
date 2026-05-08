@@ -20,6 +20,7 @@
 #include <QScrollArea>
 #include <QSizePolicy>
 #include <QSpinBox>
+#include <QStyle>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -86,6 +87,7 @@ TurntableControlDialog::TurntableControlDialog(QWidget *parent)
 
 void TurntableControlDialog::setupUi()
 {
+    setObjectName(QStringLiteral("turntableControlDialog"));
     setWindowTitle(QStringLiteral("转台控制"));
     resize(1400, 900);
     setMinimumSize(1280, 820);
@@ -361,118 +363,6 @@ void TurntableControlDialog::setupUi()
     mainLayout->addLayout(topLayout, 1);
     mainLayout->addWidget(commGroup, 0);
 
-    setStyleSheet(QStringLiteral(
-        "QDialog { background-color: #e9edf2; }"
-        "QGroupBox {"
-        "    font-size: 21px;"
-        "    font-weight: 700;"
-        "    color: #14324a;"
-        "    border: 1px solid #aebbc8;"
-        "    border-radius: 8px;"
-        "    background-color: #f7f9fb;"
-        "    margin-top: 16px;"
-        "    padding-top: 12px;"
-        "}"
-        "QGroupBox::title {"
-        "    subcontrol-origin: margin;"
-        "    left: 14px;"
-        "    padding: 0 8px;"
-        "    color: #0f4c81;"
-        "    background-color: #e9edf2;"
-        "}"
-        "QLabel {"
-        "    font-size: 17px;"
-        "    color: #23384d;"
-        "}"
-        "QLabel#connectionStatusLabel {"
-        "    font-size: 17px;"
-        "    font-weight: 700;"
-        "    border: 1px solid #aebbc8;"
-        "    border-radius: 6px;"
-        "    padding: 5px 12px;"
-        "    background-color: #dfe6ed;"
-        "}"
-        "QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {"
-        "    font-size: 19px;"
-        "    min-height: 36px;"
-        "    color: #162838;"
-        "    border: 1px solid #9eacbb;"
-        "    border-radius: 4px;"
-        "    padding: 4px 10px;"
-        "    background-color: #ffffff;"
-        "    selection-background-color: #2f5d87;"
-        "}"
-        "QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {"
-        "    border: 1px solid #2f5d87;"
-        "    background-color: #fefefe;"
-        "}"
-        "QCheckBox {"
-        "    font-size: 17px;"
-        "    font-weight: 500;"
-        "    color: #23384d;"
-        "    spacing: 8px;"
-        "}"
-        "QPushButton {"
-        "    font-size: 19px;"
-        "    font-weight: 700;"
-        "    color: #ffffff;"
-        "    background-color: #2f5d87;"
-        "    border: 1px solid #244866;"
-        "    border-radius: 5px;"
-        "    padding: 8px 18px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #3b6d99;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #234968;"
-        "}"
-        "QPushButton#secondaryButton {"
-        "    color: #18344d;"
-        "    background-color: #d9e1e9;"
-        "    border: 1px solid #97a8b8;"
-        "}"
-        "QPushButton#secondaryButton:hover {"
-        "    background-color: #cfd9e3;"
-        "}"
-        "QPushButton#secondaryButton:pressed {"
-        "    background-color: #c2ced9;"
-        "}"
-        "QHeaderView::section {"
-        "    background-color: #d8e1ea;"
-        "    color: #1d3348;"
-        "    font-size: 17px;"
-        "    font-weight: 700;"
-        "    border: none;"
-        "    border-bottom: 1px solid #aebbc8;"
-        "    padding: 10px 8px;"
-        "}"
-        "QTableWidget {"
-        "    font-size: 17px;"
-        "    color: #1c3246;"
-        "    background-color: #fdfefe;"
-        "    alternate-background-color: #eef3f7;"
-        "    border: 1px solid #b7c3cf;"
-        "    border-radius: 6px;"
-        "}"
-        "QTableWidget::item {"
-        "    padding: 8px;"
-        "    border-bottom: 1px solid #e2e8ee;"
-        "}"
-        "QGroupBox#statusPanel {"
-        "    background-color: #f5f8fb;"
-        "    border: 1px solid #aab7c3;"
-        "}"
-        "QTextEdit {"
-        "    font-size: 15px;"
-        "    color: #32485e;"
-        "    border: 1px solid #b7c3cf;"
-        "    border-radius: 5px;"
-        "    background-color: #f8fafc;"
-        "    padding: 8px;"
-        "}"
-    ));
-
     connect(m_connectButton, &QPushButton::clicked,
             this, &TurntableControlDialog::onConnectClicked);
     connect(m_saveConfigButton, &QPushButton::clicked,
@@ -553,9 +443,9 @@ void TurntableControlDialog::updateConnectionUi(bool connected)
     m_connectionStatusLabel->setText(connected
         ? QStringLiteral("网口已连接，可直接下发转台命令")
         : QStringLiteral("网口未连接，请先配置地址并连接"));
-    m_connectionStatusLabel->setStyleSheet(connected
-        ? QStringLiteral("color: #0f5132; background-color: #d7e8db; border: 1px solid #8fad97; padding: 5px 12px; border-radius: 6px;")
-        : QStringLiteral("color: #5a6774; background-color: #dde4eb; border: 1px solid #aab8c4; padding: 5px 12px; border-radius: 6px;"));
+    m_connectionStatusLabel->setProperty("state", connected ? QStringLiteral("connected") : QStringLiteral("error"));
+    m_connectionStatusLabel->style()->unpolish(m_connectionStatusLabel);
+    m_connectionStatusLabel->style()->polish(m_connectionStatusLabel);
 }
 
 void TurntableControlDialog::setupCommands()
