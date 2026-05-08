@@ -52,6 +52,7 @@ private slots:
     // 设置菜单
     void onCommandSettingsTriggered();
     void onCommandSendTriggered();
+    void onTurntableControlTriggered();
 
     // 协议管理
     void onProtocolChanged(const QString &name);

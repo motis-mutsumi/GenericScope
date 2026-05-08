@@ -49,6 +49,14 @@ public:
         int udpLocalPort;       // UDP 本地监听端口
     };
 
+    // 转台配置
+    struct Turntable {
+        QString udpRemoteIp;     // 转台 UDP 远端 IP
+        int udpRemotePort;       // 转台 UDP 远端端口
+        int udpLocalPort;        // 转台 UDP 本地监听端口
+        int axisCount;           // 转台轴数
+    };
+
     // 算法参数
     struct AlgorithmParams {
         int filterType;         // 滤波器类型
@@ -87,6 +95,7 @@ public:
     Dirs dirs;
     App app;
     Device device;
+    Turntable turntable;
     AlgorithmParams algorithmParams;
     Display display;
 

@@ -4,6 +4,7 @@
 #include "commandsettingsdialog.h"
 #include "commandsenddialog.h"
 #include "deviceconfigdialog.h"
+#include "turntablecontroldialog.h"
 #include "common_component/log/logmanager.h"
 #include "common_component/plot/monitordatamanager.h"
 #include "protocol/protocolmanager.h"
@@ -67,6 +68,12 @@ void logParserConfig(const QString &context, const ProtocolConfig &cfg)
                  .arg(byteOrderToString(cfg.byteOrder))
                  .arg(byteOrderToString(cfg.checksumByteOrder))
                  .arg(cfg.fields.size()));
+}
+
+bool looksLikeTurntableFeedback(const QByteArray &data)
+{
+    return data.indexOf(QByteArrayLiteral("ZTB")) >= 0
+        || data.indexOf(QByteArrayLiteral("ZTD")) >= 0;
 }
 }
 
@@ -218,6 +225,7 @@ void MainWindow::setupMenu()
     // 创建右键菜单
     m_settingsMenu->addSeparator();
     m_settingsMenu->addAction("指令发送", this, &MainWindow::onCommandSendTriggered);
+    m_settingsMenu->addAction("转台控制", this, &MainWindow::onTurntableControlTriggered);
 
     m_contextMenu->addAction("Export Data", this, [this]() {
         QMessageBox::information(this, "Export", "Export data functionality");
@@ -653,6 +661,12 @@ void MainWindow::onCommandSendTriggered()
     dialog.exec();
 }
 
+void MainWindow::onTurntableControlTriggered()
+{
+    TurntableControlDialog dialog(this);
+    dialog.exec();
+}
+
 void MainWindow::onProtocolChanged(const QString &name)
 {
     LOG_INFO(QString("Protocol changed to: %1").arg(name));
@@ -705,6 +719,10 @@ void MainWindow::onDeviceConnectionChanged(bool connected)
 
 void MainWindow::onDeviceDataReceived(const QByteArray &data)
 {
+    if (looksLikeTurntableFeedback(data)) {
+        return;
+    }
+
     processData(data);
 }
 

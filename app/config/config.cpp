@@ -56,6 +56,11 @@ void Config::loadDefaults()
     device.udpRemotePort = 8888;
     device.udpLocalPort = 9999;
 
+    turntable.udpRemoteIp = "192.168.1.101";
+    turntable.udpRemotePort = 8888;
+    turntable.udpLocalPort = 10099;
+    turntable.axisCount = 1;
+
     // 算法参数
     algorithmParams.filterType = 0;
     algorithmParams.filterKernelSize = 3;
@@ -99,6 +104,13 @@ void Config::load()
     device.udpRemoteIp = m_settings->value("udpRemoteIp", device.udpRemoteIp).toString();
     device.udpRemotePort = m_settings->value("udpRemotePort", device.udpRemotePort).toInt();
     device.udpLocalPort = m_settings->value("udpLocalPort", device.udpLocalPort).toInt();
+    m_settings->endGroup();
+
+    m_settings->beginGroup("Turntable");
+    turntable.udpRemoteIp = m_settings->value("udpRemoteIp", turntable.udpRemoteIp).toString();
+    turntable.udpRemotePort = m_settings->value("udpRemotePort", turntable.udpRemotePort).toInt();
+    turntable.udpLocalPort = m_settings->value("udpLocalPort", turntable.udpLocalPort).toInt();
+    turntable.axisCount = m_settings->value("axisCount", turntable.axisCount).toInt();
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");
@@ -152,6 +164,13 @@ void Config::save()
     m_settings->setValue("udpRemoteIp", device.udpRemoteIp);
     m_settings->setValue("udpRemotePort", device.udpRemotePort);
     m_settings->setValue("udpLocalPort", device.udpLocalPort);
+    m_settings->endGroup();
+
+    m_settings->beginGroup("Turntable");
+    m_settings->setValue("udpRemoteIp", turntable.udpRemoteIp);
+    m_settings->setValue("udpRemotePort", turntable.udpRemotePort);
+    m_settings->setValue("udpLocalPort", turntable.udpLocalPort);
+    m_settings->setValue("axisCount", turntable.axisCount);
     m_settings->endGroup();
 
     m_settings->beginGroup("AlgorithmParams");
