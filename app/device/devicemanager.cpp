@@ -149,29 +149,39 @@ bool DeviceManager::isConnected() const
     return m_transfer && m_transfer->isOpen();
 }
 
-QByteArray DeviceManager::sendCommand(const QByteArray &command)
+bool DeviceManager::sendCommand(const QByteArray &command)
 {
     if (!isConnected()) {
-        return QByteArray();
+        emit errorOccurred(QStringLiteral("Device is not connected"));
+        return false;
     }
 
     ScopeUart *uart = dynamic_cast<ScopeUart *>(m_transfer);
     if (uart) {
-        uart->writeData(
+        const ScopeTransferStatus status = uart->writeData(
             reinterpret_cast<uint8_t *>(const_cast<char *>(command.constData())),
             static_cast<uint32_t>(command.size()));
-        return QByteArray();
+        if (status != Ok) {
+            emit errorOccurred(QStringLiteral("Serial command send failed"));
+            return false;
+        }
+        return true;
     }
 
     ScopeUdp *udp = dynamic_cast<ScopeUdp *>(m_transfer);
     if (udp) {
-        udp->writeData(
+        const ScopeTransferStatus status = udp->writeData(
             reinterpret_cast<const uint8_t *>(command.constData()),
             static_cast<uint32_t>(command.size()));
-        return QByteArray();
+        if (status != Ok) {
+            emit errorOccurred(QStringLiteral("UDP command send failed"));
+            return false;
+        }
+        return true;
     }
 
-    return QByteArray();
+    emit errorOccurred(QStringLiteral("Unsupported transfer type for command send"));
+    return false;
 }
 
 void DeviceManager::startPolling()

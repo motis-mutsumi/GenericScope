@@ -110,7 +110,7 @@ void CommandSendDialog::setupUI()
     buttonRow->addWidget(m_sendBtn);
     buttonRow->addWidget(closeBtn);
 
-    auto *rxGroup = new QGroupBox(QStringLiteral("串口返回值"), this);
+    auto *rxGroup = new QGroupBox(QStringLiteral("设备返回值"), this);
     auto *rxLayout = new QVBoxLayout(rxGroup);
     rxLayout->setContentsMargins(10, 10, 10, 10);
     rxLayout->setSpacing(6);
@@ -450,7 +450,10 @@ bool CommandSendDialog::sendHexPayload(const QString &payloadHex, QString *error
         return false;
     }
 
-    m_deviceManager->sendCommand(commandBytes);
+    if (!m_deviceManager->sendCommand(commandBytes)) {
+        if (errorMsg) *errorMsg = QStringLiteral("指令发送失败，请检查连接和通信配置。");
+        return false;
+    }
     if (byteCount) {
         *byteCount = commandBytes.size();
     }

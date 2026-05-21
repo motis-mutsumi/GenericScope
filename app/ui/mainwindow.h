@@ -87,6 +87,7 @@ private:
     void setupChart();
     void setupLogWidget();
     void refreshAvailablePorts();
+    void applyDeviceConfigToUi();
     void populateDefaultDataTableRows();
     void resetParseErrorState();
     void resetRuntimeState(qint64 startTimeMs);

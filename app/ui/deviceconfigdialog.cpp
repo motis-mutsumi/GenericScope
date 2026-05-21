@@ -77,7 +77,8 @@ void DeviceConfigDialog::onRefresh()
 
     LOG_INFO("Refreshing device info");
     loadDeviceInfo();
-    QMessageBox::information(this, "提示", "设备信息已刷新");
+    QMessageBox::information(this, QStringLiteral("提示"),
+                             QStringLiteral("设备信息读取指令尚未接入，当前显示占位信息。"));
 }
 
 void DeviceConfigDialog::onHorizontalCalibration()
@@ -93,8 +94,8 @@ void DeviceConfigDialog::onHorizontalCalibration()
 
     if (reply == QMessageBox::Yes) {
         LOG_INFO("Starting horizontal calibration");
-        // TODO: 发送水平校准指令
-        QMessageBox::information(this, "提示", "水平校准指令已发送");
+        QMessageBox::information(this, QStringLiteral("提示"),
+                                 QStringLiteral("水平校准指令尚未接入，未向设备发送数据。"));
     }
 }
 
@@ -111,8 +112,8 @@ void DeviceConfigDialog::onReset()
 
     if (reply == QMessageBox::Yes) {
         LOG_INFO("Resetting device");
-        // TODO: 发送重置指令
-        QMessageBox::information(this, "提示", "设备重置指令已发送");
+        QMessageBox::information(this, QStringLiteral("提示"),
+                                 QStringLiteral("设备重置指令尚未接入，未向设备发送数据。"));
     }
 }
 
@@ -129,8 +130,8 @@ void DeviceConfigDialog::onRestart()
 
     if (reply == QMessageBox::Yes) {
         LOG_INFO("Restarting device");
-        // TODO: 发送重启指令
-        QMessageBox::information(this, "提示", "设备重启指令已发送");
+        QMessageBox::information(this, QStringLiteral("提示"),
+                                 QStringLiteral("设备重启指令尚未接入，未向设备发送数据。"));
     }
 }
 
@@ -152,10 +153,9 @@ void DeviceConfigDialog::onWriteOutputParams()
     QString frequency = ui->frequencyCombo->currentText();
 
     LOG_INFO(QString("Writing output params: BaudRate=%1, Frequency=%2").arg(baudRate).arg(frequency));
-
-    // TODO: 发送参数配置指令
-    QMessageBox::information(this, "提示",
-        QString("设备输出参数已写入:\n波特率: %1 Bps\n频率: %2 Hz").arg(baudRate).arg(frequency));
+    QMessageBox::information(this, QStringLiteral("提示"),
+        QStringLiteral("输出参数写入指令尚未接入，未向设备发送数据。\n波特率: %1 Bps\n频率: %2 Hz")
+            .arg(baudRate).arg(frequency));
 }
 
 void DeviceConfigDialog::onWriteGyroParams()
@@ -169,10 +169,9 @@ void DeviceConfigDialog::onWriteGyroParams()
     QString filter = ui->gyroFilterCombo->currentText();
 
     LOG_INFO(QString("Writing gyro params: Range=%1, Filter=%2").arg(range).arg(filter));
-
-    // TODO: 发送陀螺仪参数配置指令
-    QMessageBox::information(this, "提示",
-        QString("陀螺仪参数已写入:\n量程: %1 °/s\n滤波器: %2 Hz").arg(range).arg(filter));
+    QMessageBox::information(this, QStringLiteral("提示"),
+        QStringLiteral("陀螺仪参数写入指令尚未接入，未向设备发送数据。\n量程: %1 deg/s\n滤波器: %2 Hz")
+            .arg(range).arg(filter));
 }
 
 void DeviceConfigDialog::onWriteAccelParams()
@@ -186,10 +185,9 @@ void DeviceConfigDialog::onWriteAccelParams()
     QString filter = ui->accelFilterCombo->currentText();
 
     LOG_INFO(QString("Writing accel params: Range=%1, Filter=%2").arg(range).arg(filter));
-
-    // TODO: 发送加速度计参数配置指令
-    QMessageBox::information(this, "提示",
-        QString("加速度计参数已写入:\n量程: %1 g\n滤波器: %2 Hz").arg(range).arg(filter));
+    QMessageBox::information(this, QStringLiteral("提示"),
+        QStringLiteral("加速度计参数写入指令尚未接入，未向设备发送数据。\n量程: %1 g\n滤波器: %2 Hz")
+            .arg(range).arg(filter));
 }
 
 void DeviceConfigDialog::onDeviceConnectionChanged(bool connected)

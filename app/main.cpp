@@ -27,12 +27,12 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
-    // 初始化日志系统
-    LogManager::instance()->initialize("logs", true, true);
-    LogManager::instance()->setLogLevel(LogManager::Info);
-
     // 加载配置
     Config::instance()->load();
+
+    // 初始化日志系统
+    LogManager::instance()->initialize(Config::instance()->dirs.logDir, true, true);
+    LogManager::instance()->setLogLevel(LogManager::Info);
 
     // 创建主窗口
     MainWindow mainWindow;

@@ -357,7 +357,12 @@ void CommandSendDialog::onSendClicked()
         return;
     }
 
-    m_deviceManager->sendCommand(commandBytes);
+    if (!m_deviceManager->sendCommand(commandBytes)) {
+        QMessageBox::warning(this, QStringLiteral("发送失败"),
+                             QStringLiteral("指令发送失败，请检查连接和通信配置。"));
+        m_statusLabel->setText(QStringLiteral("发送失败：通信写入失败。"));
+        return;
+    }
 
     const QString commandName = m_commandCombo->currentText().trimmed();
     const QString nameForDisplay = commandName.isEmpty() ? "自定义指令" : commandName;

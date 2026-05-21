@@ -128,6 +128,7 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始状态
     updateConnectionStatus(false);
     refreshAvailablePorts();
+    applyDeviceConfigToUi();
 
     // 启动时间显示定时器
     m_timeDisplayTimer->start(kTimeDisplayInterval);
@@ -487,6 +488,45 @@ void MainWindow::refreshAvailablePorts()
             ui->portComboBox->addItem(QString("COM%1").arg(i));
         }
     }
+}
+
+void MainWindow::applyDeviceConfigToUi()
+{
+    Config *cfg = Config::instance();
+    if (!cfg || !ui) {
+        return;
+    }
+
+    const bool isUdp = cfg->device.type.compare(QStringLiteral("UDP"), Qt::CaseInsensitive) == 0;
+
+    if (ui->transferTypeComboBox) {
+        const QSignalBlocker blocker(ui->transferTypeComboBox);
+        ui->transferTypeComboBox->setCurrentIndex(isUdp ? 1 : 0);
+    }
+
+    if (ui->portComboBox) {
+        const QString port = cfg->device.port.trimmed();
+        if (!port.isEmpty() && ui->portComboBox->findText(port) < 0) {
+            ui->portComboBox->addItem(port);
+        }
+        if (!port.isEmpty()) {
+            ui->portComboBox->setCurrentText(port);
+        }
+    }
+
+    if (ui->baudRateComboBox) {
+        const QString baudRate = QString::number(cfg->device.baudRate);
+        if (ui->baudRateComboBox->findText(baudRate) < 0) {
+            ui->baudRateComboBox->addItem(baudRate);
+        }
+        ui->baudRateComboBox->setCurrentText(baudRate);
+    }
+
+    ui->udpRemoteIpEdit->setText(cfg->device.udpRemoteIp);
+    ui->udpRemotePortSpinBox->setValue(cfg->device.udpRemotePort);
+    ui->udpLocalPortSpinBox->setValue(cfg->device.udpLocalPort);
+
+    on_transferTypeComboBox_currentIndexChanged(isUdp ? 1 : 0);
 }
 
 void MainWindow::on_connectToggleButton_toggled(bool checked)

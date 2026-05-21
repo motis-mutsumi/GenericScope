@@ -28,6 +28,7 @@ bool DataRecorder::startRecording(const QString &fileName, RecordFormat format, 
     m_format = format;
     m_metadata = metadata;
     m_recordedCount = 0;
+    m_dataKeys.clear();
 
     m_file = new QFile(fileName);
     if (!m_file->open(QIODevice::WriteOnly | QIODevice::Text)) {

@@ -23,7 +23,7 @@ public:
     bool connectDevice();
     void disconnectDevice();
     bool isConnected() const;
-    QByteArray sendCommand(const QByteArray &command);
+    bool sendCommand(const QByteArray &command);
     void startPolling();
     void stopPolling();
 
