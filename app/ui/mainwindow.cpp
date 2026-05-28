@@ -771,7 +771,19 @@ void MainWindow::onDeviceDataReceived(const QByteArray &data)
         return;
     }
 
+    const bool isUdp =
+        (Config::instance()->device.type.compare(QStringLiteral("UDP"), Qt::CaseInsensitive) == 0);
+    if (isUdp && !m_rxBuffer.isEmpty()) {
+        m_rxBuffer.clear();
+    }
+
     processData(data);
+
+    if (isUdp && !m_rxBuffer.isEmpty()) {
+        LOG_WARNING(QString("Dropped %1 buffered UDP bytes after datagram parse to avoid cross-packet contamination")
+                        .arg(m_rxBuffer.size()));
+        m_rxBuffer.clear();
+    }
 }
 
 void MainWindow::onDeviceError(const QString &error)
@@ -840,6 +852,7 @@ void MainWindow::resetRuntimeState(qint64 startTimeMs)
     m_lastErrorMessage.clear();
     m_pendingTableValues.clear();
     m_pendingTableUnits.clear();
+    m_lastParsedFieldValues.clear();
     resetParseErrorState();
 }
 
@@ -923,6 +936,7 @@ void MainWindow::updateConnectionStatus(bool connected)
         updateIMUStatus("Disconnected", 0, "None");
         m_pendingTableValues.clear();
         m_pendingTableUnits.clear();
+        m_lastParsedFieldValues.clear();
         resetParseErrorState();
         m_rxBuffer.clear();  // 断开连接时清空缓冲
         resetParseErrorState();
@@ -1052,6 +1066,31 @@ void MainWindow::processData(const QByteArray &data)
             if (ok) {
                 fieldValues[fieldName] = doubleValue;
                 const QString unit = getFieldUnit(fieldName);
+                const bool isTemperatureLikeField =
+                    fieldName.contains(QStringLiteral("temp"), Qt::CaseInsensitive)
+                    || fieldName.compare(QStringLiteral("t"), Qt::CaseInsensitive) == 0
+                    || unit.contains(QStringLiteral("C"), Qt::CaseInsensitive)
+                    || unit.contains(QChar(0x00B0))
+                    || unit.contains(QChar(0x2103));
+
+                if (isTemperatureLikeField && m_lastParsedFieldValues.contains(fieldName)) {
+                    const double previousValue = m_lastParsedFieldValues.value(fieldName);
+                    const double delta = qAbs(doubleValue - previousValue);
+                    if (delta >= 5.0) {
+                        const QByteArray suspiciousFrame = !result.rawData.isEmpty()
+                            ? result.rawData
+                            : m_rxBuffer.left(qMin(m_rxBuffer.size(), 256));
+                        LOG_WARNING(QString("Suspicious frame detected for %1: prev=%2 current=%3 delta=%4 frame[%5B]=%6")
+                                        .arg(fieldName)
+                                        .arg(previousValue, 0, 'f', 3)
+                                        .arg(doubleValue, 0, 'f', 3)
+                                        .arg(delta, 0, 'f', 3)
+                                        .arg(suspiciousFrame.size())
+                                        .arg(QString::fromLatin1(suspiciousFrame.toHex(' ').toUpper())));
+                    }
+                }
+
+                m_lastParsedFieldValues[fieldName] = doubleValue;
                 updateDataTable(fieldName, doubleValue, unit);
             } else {
                 LOG_WARNING(QString("Field %1 cannot be converted to double: %2")

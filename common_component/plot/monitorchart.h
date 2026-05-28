@@ -89,6 +89,8 @@ private:
     void setupPlot();  // 配置QCustomPlot样式
     void createActions();
     void updateTitle();  // 更新标题
+    void updateXAxisTicker(double visibleRangeSeconds);
+    void updateYAxisRange();
 
     QString m_fieldName;               // 字段名
     QString m_unit;                    // 单位

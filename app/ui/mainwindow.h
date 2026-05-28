@@ -150,6 +150,7 @@ private:
     bool m_isDarkMode;
     QMap<QString, QVariant> m_pendingTableValues;
     QMap<QString, QString> m_pendingTableUnits;
+    QMap<QString, double> m_lastParsedFieldValues;
 
     // 数据表格行索引映射
     QMap<QString, int> m_tableRowMap;
